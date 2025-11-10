@@ -1,35 +1,70 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import React, { useState } from 'react';
+import LandingPage from './components/LandingPage';
+import ChatPage from './components/ChatPage';
+import AuthModal from './components/AuthModal';
+import { AuthProvider, useAuth } from './hooks/useAuth.jsx';
+import './index.css';
 
-function App() {
-  const [count, setCount] = useState(0)
+function AppContent() {
+  const [currentPage, setCurrentPage] = useState('landing');
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const { user, loading, signInAnonymously } = useAuth();
+
+  const handleGetStarted = async () => {
+    if (!user && !loading) {
+      // Sign in anonymously for demo
+      await signInAnonymously();
+    }
+    setCurrentPage('chat');
+  };
+
+  const handleSignIn = () => {
+    setShowAuthModal(true);
+  };
+
+  const handleAuthSuccess = () => {
+    setShowAuthModal(false);
+    setCurrentPage('chat');
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.jsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
-  )
+    <div className="App">
+      {currentPage === 'landing' ? (
+        <LandingPage 
+          onGetStarted={handleGetStarted}
+          onSignIn={handleSignIn}
+        />
+      ) : (
+        <ChatPage />
+      )}
+      
+      {showAuthModal && (
+        <AuthModal 
+          onClose={() => setShowAuthModal(false)}
+          onSuccess={handleAuthSuccess}
+        />
+      )}
+    </div>
+  );
 }
 
-export default App
+function App() {
+  return (
+    <AuthProvider>
+      <AppContent />
+    </AuthProvider>
+  );
+}
+
+export default App;
