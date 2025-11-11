@@ -6,13 +6,15 @@ class ApiService {
 
   async sendMessage(message, context = null) {
     try {
-      const response = await fetch(`${this.baseURL}/chat`, {
+      const response = await fetch(`${this.baseURL}/api/chat`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          message
+          message,
+          user_id: 'user_123', // You can make this dynamic based on logged in user
+          context: context
         })
       });
 

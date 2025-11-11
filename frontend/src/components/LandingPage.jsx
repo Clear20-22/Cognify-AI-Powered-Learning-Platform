@@ -71,12 +71,6 @@ function LandingPage() {
                     {user.name || user.email?.split("@")[0]}
                   </span>
                   <button
-                    onClick={() => window.location.href = "/chat"}
-                    className="px-6 py-2.5 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-xl font-semibold hover:from-red-700 hover:to-red-800 transition-all shadow-lg hover:shadow-xl transform hover:scale-105"
-                  >
-                    Start Learning
-                  </button>
-                  <button
                     onClick={handleSignOut}
                     className="px-4 py-2 text-sm text-gray-700 hover:text-red-600 font-medium transition-colors border border-gray-300 hover:border-red-600 rounded-xl"
                   >
@@ -249,7 +243,10 @@ function LandingPage() {
 
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
             {/* Feature Card 1 */}
-            <div className="group bg-gradient-to-br from-white to-red-50 rounded-2xl p-8 shadow-lg hover:shadow-2xl transition-all transform hover:-translate-y-2 border border-red-100">
+            <div 
+              onClick={() => window.location.href = "/chat"}
+              className="group bg-gradient-to-br from-white to-red-50 rounded-2xl p-8 shadow-lg hover:shadow-2xl transition-all transform hover:-translate-y-2 border border-red-100 cursor-pointer"
+            >
               <div className="w-16 h-16 bg-gradient-to-br from-red-500 to-red-600 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform shadow-lg">
                 <BookOpenIcon className="w-8 h-8 text-white" />
               </div>
@@ -260,7 +257,10 @@ function LandingPage() {
             </div>
 
             {/* Feature Card 2 */}
-            <div className="group bg-gradient-to-br from-white to-red-50 rounded-2xl p-8 shadow-lg hover:shadow-2xl transition-all transform hover:-translate-y-2 border border-red-100">
+            <div 
+              onClick={() => window.location.href = "/chat"}
+              className="group bg-gradient-to-br from-white to-red-50 rounded-2xl p-8 shadow-lg hover:shadow-2xl transition-all transform hover:-translate-y-2 border border-red-100 cursor-pointer"
+            >
               <div className="w-16 h-16 bg-gradient-to-br from-orange-500 to-red-500 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform shadow-lg">
                 <DocumentTextIcon className="w-8 h-8 text-white" />
               </div>
@@ -271,7 +271,10 @@ function LandingPage() {
             </div>
 
             {/* Feature Card 3 */}
-            <div className="group bg-gradient-to-br from-white to-red-50 rounded-2xl p-8 shadow-lg hover:shadow-2xl transition-all transform hover:-translate-y-2 border border-red-100">
+            <div 
+              onClick={() => window.location.href = "/chat"}
+              className="group bg-gradient-to-br from-white to-red-50 rounded-2xl p-8 shadow-lg hover:shadow-2xl transition-all transform hover:-translate-y-2 border border-red-100 cursor-pointer"
+            >
               <div className="w-16 h-16 bg-gradient-to-br from-red-600 to-red-700 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform shadow-lg">
                 <AcademicCapIcon className="w-8 h-8 text-white" />
               </div>
@@ -282,7 +285,10 @@ function LandingPage() {
             </div>
 
             {/* Feature Card 4 */}
-            <div className="group bg-gradient-to-br from-white to-red-50 rounded-2xl p-8 shadow-lg hover:shadow-2xl transition-all transform hover:-translate-y-2 border border-red-100">
+            <div 
+              onClick={() => window.location.href = "/chat"}
+              className="group bg-gradient-to-br from-white to-red-50 rounded-2xl p-8 shadow-lg hover:shadow-2xl transition-all transform hover:-translate-y-2 border border-red-100 cursor-pointer"
+            >
               <div className="w-16 h-16 bg-gradient-to-br from-red-700 to-red-800 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform shadow-lg">
                 <SparklesIcon className="w-8 h-8 text-white" />
               </div>
