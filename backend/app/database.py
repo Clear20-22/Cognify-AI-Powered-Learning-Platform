@@ -137,6 +137,15 @@ class MongoDataStore:
             logger.error(f"Error getting user: {e}")
             return None
     
+    async def get_user_by_email(self, email: str) -> Optional[Dict]:
+        """Get user from database by email"""
+        try:
+            user = await self.users.find_one({"email": email})
+            return user
+        except Exception as e:
+            logger.error(f"Error getting user by email: {e}")
+            return None
+    
     async def add_chat(self, chat_id: str, chat_data: Dict) -> Dict:
         """Add chat to database"""
         try:

@@ -14,6 +14,7 @@ function AuthModal({ onClose, initialMode = 'signin' }) {
   const [mode, setMode] = useState(initialMode); // 'signin' or 'signup'
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [successMessage, setSuccessMessage] = useState(null);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   
@@ -24,7 +25,7 @@ function AuthModal({ onClose, initialMode = 'signin' }) {
     confirmPassword: ''
   });
 
-  const { signInAnonymously } = useAuth();
+  const { signUp, signIn } = useAuth();
 
   const handleInputChange = (e) => {
     setFormData({
@@ -71,13 +72,40 @@ function AuthModal({ onClose, initialMode = 'signin' }) {
     try {
       setLoading(true);
       setError(null);
+      setSuccessMessage(null);
 
-      // Simplified auth - just create a demo user
-      await signInAnonymously();
-      onClose();
+      let result;
+      if (mode === 'signup') {
+        result = await signUp(formData.email, formData.password, formData.fullName);
+        
+        if (result.error) {
+          setError(result.error.message);
+        } else {
+          // Successfully signed up - DON'T auto sign in, show sign in page
+          setSuccessMessage('Account created successfully! Please sign in with your credentials.');
+          setMode('signin');
+          // Clear the password fields but keep email
+          setFormData({
+            ...formData,
+            password: '',
+            confirmPassword: ''
+          });
+        }
+      } else {
+        result = await signIn(formData.email, formData.password);
+        
+        if (result.error) {
+          setError(result.error.message);
+        } else {
+          // Successfully signed in - close modal
+          onClose();
+        }
+      }
     } catch (err) {
-      setError("An unexpected error occurred. Please try again.");
       console.error("Auth error:", err);
+      // Show more detailed error message
+      const errorMessage = err.message || "An unexpected error occurred. Please try again.";
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -87,8 +115,8 @@ function AuthModal({ onClose, initialMode = 'signin' }) {
     try {
       setLoading(true);
       setError(null);
-      await signInAnonymously();
-      onClose();
+      // TODO: Implement social auth when ready
+      setError(`${provider} authentication coming soon!`);
     } catch (err) {
       setError("An unexpected error occurred");
       console.error("Auth error:", err);
@@ -100,6 +128,7 @@ function AuthModal({ onClose, initialMode = 'signin' }) {
   const switchMode = () => {
     setMode(mode === 'signin' ? 'signup' : 'signin');
     setError(null);
+    setSuccessMessage(null);
     setFormData({
       fullName: '',
       email: '',
@@ -225,6 +254,12 @@ function AuthModal({ onClose, initialMode = 'signin' }) {
               {error && (
                 <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl">
                   <p className="text-red-600 text-sm font-medium">{error}</p>
+                </div>
+              )}
+
+              {successMessage && (
+                <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-xl">
+                  <p className="text-green-600 text-sm font-medium">{successMessage}</p>
                 </div>
               )}
 

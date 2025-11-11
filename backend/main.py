@@ -108,6 +108,41 @@ app.add_middleware(
 )
 
 # ============================================================================
+# Authentication Utilities
+# ============================================================================
+
+from passlib.context import CryptContext
+from jose import JWTError, jwt
+from datetime import timedelta
+
+# Password hashing
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+# JWT settings
+SECRET_KEY = os.getenv("SECRET_KEY", "your-secret-key-change-this-in-production")
+ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 7  # 7 days
+
+def hash_password(password: str) -> str:
+    """Hash a password."""
+    return pwd_context.hash(password)
+
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    """Verify a password against a hash."""
+    return pwd_context.verify(plain_password, hashed_password)
+
+def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
+    """Create a JWT access token."""
+    to_encode = data.copy()
+    if expires_delta:
+        expire = datetime.utcnow() + expires_delta
+    else:
+        expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    to_encode.update({"exp": expire})
+    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    return encoded_jwt
+
+# ============================================================================
 # AI Service
 # ============================================================================
 
@@ -379,6 +414,13 @@ class InMemoryDataStore:
         """Get user from store."""
         return self.users.get(user_id)
     
+    async def get_user_by_email(self, email: str) -> Optional[Dict]:
+        """Get user from store by email."""
+        for user in self.users.values():
+            if user.get("email") == email:
+                return user
+        return None
+    
     async def add_chat(self, chat_id: str, chat_data: Dict) -> Dict:
         """Add chat to store."""
         chat_data["id"] = chat_id
@@ -450,6 +492,17 @@ class UserCreateRequest(BaseModel):
     """Request to create a new user."""
     email: str = Field(..., description="User email")
     name: Optional[str] = Field(None, description="User name")
+
+class SignUpRequest(BaseModel):
+    """Request to sign up a new user."""
+    email: str = Field(..., description="User email")
+    password: str = Field(..., min_length=6, description="User password (min 6 characters)")
+    fullName: str = Field(..., description="User full name")
+
+class SignInRequest(BaseModel):
+    """Request to sign in."""
+    email: str = Field(..., description="User email")
+    password: str = Field(..., description="User password")
 
 # ============================================================================
 # API Routes
@@ -759,6 +812,119 @@ async def get_exam(exam_id: str):
         return safe_exam
     
     return exam
+
+# ============================================================================
+# Authentication Endpoints
+# ============================================================================
+
+@app.post("/api/auth/signup", tags=["Authentication"])
+async def sign_up(request: SignUpRequest):
+    """
+    Sign up a new user with email and password.
+    Creates a user account and returns authentication token.
+    """
+    try:
+        # Check if user already exists
+        existing_user = await app.state.data_store.get_user_by_email(request.email)
+        if existing_user:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Email already registered"
+            )
+        
+        # Hash password
+        hashed_password = hash_password(request.password)
+        
+        # Create user
+        import uuid
+        user_id = f"user_{uuid.uuid4().hex[:8]}"
+        user_data = {
+            "email": request.email,
+            "name": request.fullName,
+            "password": hashed_password,
+            "created_at": datetime.now().isoformat()
+        }
+        
+        user = await app.state.data_store.add_user(user_id, user_data)
+        
+        # Create access token
+        access_token = create_access_token(data={"sub": user_id, "email": request.email})
+        
+        # Remove password from response
+        user_response = {
+            "id": user_id,
+            "email": user["email"],
+            "name": user["name"],
+            "created_at": user["created_at"]
+        }
+        
+        return {
+            "success": True,
+            "user": user_response,
+            "access_token": access_token,
+            "token_type": "bearer",
+            "message": "Account created successfully"
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Sign up error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to create account: {str(e)}"
+        )
+
+@app.post("/api/auth/signin", tags=["Authentication"])
+async def sign_in(request: SignInRequest):
+    """
+    Sign in with email and password.
+    Returns authentication token for authenticated user.
+    """
+    try:
+        # Get user by email
+        user = await app.state.data_store.get_user_by_email(request.email)
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid email or password"
+            )
+        
+        # Verify password
+        if not verify_password(request.password, user.get("password", "")):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid email or password"
+            )
+        
+        # Create access token
+        user_id = user.get("id") or user.get("_id")
+        access_token = create_access_token(data={"sub": str(user_id), "email": user["email"]})
+        
+        # Remove password from response
+        user_response = {
+            "id": str(user_id),
+            "email": user["email"],
+            "name": user.get("name", ""),
+            "created_at": user.get("created_at", "")
+        }
+        
+        return {
+            "success": True,
+            "user": user_response,
+            "access_token": access_token,
+            "token_type": "bearer",
+            "message": "Signed in successfully"
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Sign in error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to sign in: {str(e)}"
+        )
 
 # ============================================================================
 # User Endpoints

@@ -15,11 +15,15 @@ import {
 function LandingPage() {
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [authMode, setAuthMode] = useState('signin');
-  const { user } = useAuth();
+  const { user, signOut } = useAuth();
 
   const openAuth = (mode) => {
     setAuthMode(mode);
     setShowAuthModal(true);
+  };
+
+  const handleSignOut = async () => {
+    await signOut();
   };
 
   return (
@@ -64,13 +68,19 @@ function LandingPage() {
               {user ? (
                 <div className="flex items-center space-x-4">
                   <span className="text-gray-700 font-medium">
-                    {user.user_metadata?.full_name || user.email?.split("@")[0]}
+                    {user.name || user.email?.split("@")[0]}
                   </span>
                   <button
                     onClick={() => window.location.href = "/chat"}
                     className="px-6 py-2.5 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-xl font-semibold hover:from-red-700 hover:to-red-800 transition-all shadow-lg hover:shadow-xl transform hover:scale-105"
                   >
                     Start Learning
+                  </button>
+                  <button
+                    onClick={handleSignOut}
+                    className="px-4 py-2 text-sm text-gray-700 hover:text-red-600 font-medium transition-colors border border-gray-300 hover:border-red-600 rounded-xl"
+                  >
+                    Sign Out
                   </button>
                 </div>
               ) : (

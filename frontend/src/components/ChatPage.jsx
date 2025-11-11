@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import ChatIcon from '../assets/chat.svg';
 import { apiService } from '../services/apiService';
-import { useUserId } from '../hooks/useAuth.jsx';
+import { useUserId, useAuth } from '../hooks/useAuth.jsx';
+import { useNavigate } from 'react-router-dom';
+import Avatar from './Avatar';
 
 function ChatPage() {
   const [input, setInput] = useState('');
@@ -30,6 +32,13 @@ function ChatPage() {
   
   // Get real user ID
   const userId = useUserId();
+  const { user, signOut } = useAuth();
+  const navigate = useNavigate();
+
+  const handleSignOut = async () => {
+    await signOut();
+    navigate('/');
+  };
   
   const currentQuestion = currentExam?.exam_data?.questions?.[currentQuestionIndex];
 
@@ -490,10 +499,26 @@ function ChatPage() {
             </svg>
           </button>
           
+          {/* Logout Button */}
+          <button 
+            onClick={handleSignOut}
+            className="p-2 hover:bg-red-100 rounded-lg transition-colors group"
+            title="Sign Out"
+          >
+            <svg className="w-5 h-5 text-gray-600 group-hover:text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+            </svg>
+          </button>
+          
           {/* User Avatar */}
-          <div className="w-8 h-8 bg-orange-400 rounded-full flex items-center justify-center">
-            <span className="text-white text-sm font-medium">U</span>
-          </div>
+          {user && (
+            <Avatar
+              src={null}
+              alt={`${user.name || user.email?.split("@")[0] || "User"}'s avatar`}
+              size="w-8 h-8"
+              fallbackText={(user.name || user.email?.split("@")[0] || "U")[0].toUpperCase()}
+            />
+          )}
         </div>
       </div>
 

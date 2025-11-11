@@ -5,6 +5,7 @@ import './index.css'
 import LandingPage from './components/LandingPage'
 import ChatPage from './components/ChatPage'
 import History from './components/History'
+import { AuthProvider } from './hooks/useAuth'
 
 const router = createBrowserRouter([
   {
@@ -23,6 +24,8 @@ const router = createBrowserRouter([
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
-    <RouterProvider router={router} />
+    <AuthProvider>
+      <RouterProvider router={router} />
+    </AuthProvider>
   </StrictMode>,
 )
