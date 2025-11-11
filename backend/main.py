@@ -12,9 +12,13 @@ import logging
 import os
 from datetime import datetime
 from dotenv import load_dotenv
+from contextlib import asynccontextmanager
 
 # Load environment variables
 load_dotenv()
+
+# Import database
+from app.database import Database, MongoDataStore
 
 # Configure logging
 logging.basicConfig(
@@ -22,6 +26,44 @@ logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
+
+# ============================================================================
+# Application Lifespan
+# ============================================================================
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Application lifespan manager"""
+    # Startup
+    logger.info("🚀 Cognify AI Learning Platform starting...")
+    
+    # Connect to MongoDB
+    mongodb_connected = await Database.connect_db()
+    
+    if mongodb_connected:
+        logger.info("✅ MongoDB connected")
+        # Initialize global data store with MongoDB
+        app.state.data_store = MongoDataStore(Database.get_db())
+    else:
+        logger.warning("⚠️  Running without database connection")
+        # Fallback to in-memory storage
+        app.state.data_store = InMemoryDataStore()
+    
+    # Check AI service
+    gemini_key = os.getenv("GEMINI_API_KEY")
+    if gemini_key:
+        logger.info("✅ AI Service: Enabled")
+    else:
+        logger.info("✅ AI Service: Demo Mode")
+    
+    logger.info("✅ Server ready at http://localhost:8000")
+    logger.info("📚 API Docs at http://localhost:8000/docs")
+    
+    yield
+    
+    # Shutdown
+    logger.info("👋 Cognify AI Learning Platform shutting down...")
+    await Database.close_db()
 
 # ============================================================================
 # FastAPI Application Configuration
@@ -33,6 +75,7 @@ app = FastAPI(
     version="3.0.0",
     docs_url="/docs",
     redoc_url="/redoc",
+    lifespan=lifespan,
     contact={
         "name": "Cognify Team",
         "url": "https://github.com/Clear20-22/Cognify-AI-Powered-Learning-Platform",
@@ -313,10 +356,10 @@ Explanation: [text]"""
 ai_service = AIService()
 
 # ============================================================================
-# In-Memory Data Store (Replace with database in production)
+# In-Memory Data Store (Fallback if MongoDB is unavailable)
 # ============================================================================
 
-class DataStore:
+class InMemoryDataStore:
     """Simple in-memory data store for demo purposes."""
     
     def __init__(self):
@@ -325,52 +368,49 @@ class DataStore:
         self.exams: Dict[str, Dict] = {}
         self.sessions: Dict[str, Dict] = {}
     
-    def add_user(self, user_id: str, user_data: Dict) -> Dict:
+    async def add_user(self, user_id: str, user_data: Dict) -> Dict:
         """Add user to store."""
         user_data["id"] = user_id
         user_data["created_at"] = datetime.now().isoformat()
         self.users[user_id] = user_data
         return user_data
     
-    def get_user(self, user_id: str) -> Optional[Dict]:
+    async def get_user(self, user_id: str) -> Optional[Dict]:
         """Get user from store."""
         return self.users.get(user_id)
     
-    def add_chat(self, chat_id: str, chat_data: Dict) -> Dict:
+    async def add_chat(self, chat_id: str, chat_data: Dict) -> Dict:
         """Add chat to store."""
         chat_data["id"] = chat_id
         chat_data["created_at"] = datetime.now().isoformat()
         self.chats[chat_id] = chat_data
         return chat_data
     
-    def get_chat(self, chat_id: str) -> Optional[Dict]:
+    async def get_chat(self, chat_id: str) -> Optional[Dict]:
         """Get chat from store."""
         return self.chats.get(chat_id)
     
-    def get_user_chats(self, user_id: str) -> List[Dict]:
+    async def get_user_chats(self, user_id: str) -> List[Dict]:
         """Get all chats for a user."""
         return [chat for chat in self.chats.values() if chat.get("user_id") == user_id]
     
-    def add_exam(self, exam_id: str, exam_data: Dict) -> Dict:
+    async def add_exam(self, exam_id: str, exam_data: Dict) -> Dict:
         """Add exam to store."""
         exam_data["id"] = exam_id
         exam_data["created_at"] = datetime.now().isoformat()
         self.exams[exam_id] = exam_data
         return exam_data
     
-    def get_exam(self, exam_id: str) -> Optional[Dict]:
+    async def get_exam(self, exam_id: str) -> Optional[Dict]:
         """Get exam from store."""
         return self.exams.get(exam_id)
     
-    def update_exam(self, exam_id: str, updates: Dict) -> Optional[Dict]:
+    async def update_exam(self, exam_id: str, updates: Dict) -> Optional[Dict]:
         """Update exam in store."""
         if exam_id in self.exams:
             self.exams[exam_id].update(updates)
             return self.exams[exam_id]
         return None
-
-# Initialize data store
-data_store = DataStore()
 
 # ============================================================================
 # Request/Response Models
@@ -514,7 +554,8 @@ async def create_chat(request: ChatCreateRequest):
         )
         
         # Create chat in store
-        chat_id = f"chat_{len(data_store.chats) + 1}"
+        import uuid
+        chat_id = f"chat_{uuid.uuid4().hex[:8]}"
         chat_data = {
             "user_id": request.user_id,
             "topic": request.topic,
@@ -522,7 +563,7 @@ async def create_chat(request: ChatCreateRequest):
             "messages": messages
         }
         
-        chat = data_store.add_chat(chat_id, chat_data)
+        chat = await app.state.data_store.add_chat(chat_id, chat_data)
         
         return {
             "success": True,
@@ -541,7 +582,7 @@ async def create_chat(request: ChatCreateRequest):
 @app.get("/api/chats/{chat_id}", tags=["Chat"])
 async def get_chat(chat_id: str):
     """Get a specific chat by ID."""
-    chat = data_store.get_chat(chat_id)
+    chat = await app.state.data_store.get_chat(chat_id)
     if not chat:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -552,7 +593,7 @@ async def get_chat(chat_id: str):
 @app.get("/api/users/{user_id}/chats", tags=["Chat"])
 async def get_user_chats(user_id: str):
     """Get all chats for a specific user."""
-    chats = data_store.get_user_chats(user_id)
+    chats = await app.state.data_store.get_user_chats(user_id)
     return {
         "user_id": user_id,
         "total": len(chats),
@@ -581,7 +622,8 @@ async def create_exam(request: ExamCreateRequest):
         )
         
         # Create exam in store
-        exam_id = f"exam_{len(data_store.exams) + 1}"
+        import uuid
+        exam_id = f"exam_{uuid.uuid4().hex[:8]}"
         exam_data = {
             "user_id": request.user_id,
             "topic": request.topic,
@@ -592,7 +634,7 @@ async def create_exam(request: ExamCreateRequest):
             "score": None
         }
         
-        exam = data_store.add_exam(exam_id, exam_data)
+        exam = await app.state.data_store.add_exam(exam_id, exam_data)
         
         # Remove correct answers and explanations from response
         safe_questions = [
@@ -629,7 +671,7 @@ async def submit_exam(request: ExamSubmitRequest):
     Returns score and detailed feedback for each question.
     """
     try:
-        exam = data_store.get_exam(request.exam_id)
+        exam = await app.state.data_store.get_exam(request.exam_id)
         if not exam:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -667,7 +709,7 @@ async def submit_exam(request: ExamSubmitRequest):
         score = (correct_count / len(questions)) * 100 if questions else 0
         
         # Update exam
-        data_store.update_exam(request.exam_id, {
+        await app.state.data_store.update_exam(request.exam_id, {
             "submitted": True,
             "score": score,
             "results": results,
@@ -697,7 +739,7 @@ async def submit_exam(request: ExamSubmitRequest):
 @app.get("/api/exams/{exam_id}", tags=["Exams"])
 async def get_exam(exam_id: str):
     """Get exam details (only after submission)."""
-    exam = data_store.get_exam(exam_id)
+    exam = await app.state.data_store.get_exam(exam_id)
     if not exam:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -726,13 +768,14 @@ async def get_exam(exam_id: str):
 async def create_user(request: UserCreateRequest):
     """Create a new user profile."""
     try:
-        user_id = f"user_{len(data_store.users) + 1}"
+        import uuid
+        user_id = f"user_{uuid.uuid4().hex[:8]}"
         user_data = {
             "email": request.email,
             "name": request.name or request.email.split('@')[0]
         }
         
-        user = data_store.add_user(user_id, user_data)
+        user = await app.state.data_store.add_user(user_id, user_data)
         
         return {
             "success": True,
@@ -751,7 +794,7 @@ async def create_user(request: UserCreateRequest):
 @app.get("/api/users/{user_id}", tags=["Users"])
 async def get_user(user_id: str):
     """Get user profile."""
-    user = data_store.get_user(user_id)
+    user = await app.state.data_store.get_user(user_id)
     if not user:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
