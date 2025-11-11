@@ -31,6 +31,11 @@ function ChatPage() {
   // Chat messages - now dynamic
   const [messages, setMessages] = useState([]);
   
+  // Edit and file upload states
+  const [editingMessageId, setEditingMessageId] = useState(null);
+  const [editText, setEditText] = useState('');
+  const [selectedFiles, setSelectedFiles] = useState([]);
+  
   // Get real user ID
   const userId = useUserId();
   const { user, signOut } = useAuth();
@@ -278,6 +283,7 @@ function ChatPage() {
     setMessages(prev => [...prev, userMessage]);
     const currentInput = input.trim();
     setInput('');
+    setSelectedFiles([]); // Clear selected files
     setIsLoading(true);
     
     try {
@@ -307,6 +313,72 @@ function ChatPage() {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  // Copy message to clipboard
+  const copyToClipboard = (text) => {
+    navigator.clipboard.writeText(text).then(() => {
+      // You could add a toast notification here
+      console.log('Copied to clipboard');
+    }).catch(err => {
+      console.error('Failed to copy:', err);
+    });
+  };
+
+  // Start editing a message
+  const startEdit = (messageId, text) => {
+    setEditingMessageId(messageId);
+    setEditText(text);
+  };
+
+  // Save edited message
+  const saveEdit = async () => {
+    if (!editText.trim()) return;
+
+    // Update the message in the list
+    setMessages(prev => prev.map(msg => 
+      msg.id === editingMessageId 
+        ? { ...msg, text: editText.trim() }
+        : msg
+    ));
+
+    // Get AI response for edited message
+    setEditingMessageId(null);
+    setEditText('');
+    setIsLoading(true);
+
+    try {
+      const aiResponse = await apiService.sendMessage(editText.trim());
+      
+      const aiMessage = {
+        id: Date.now(),
+        from: "ai",
+        text: aiResponse
+      };
+      
+      setMessages(prev => [...prev, aiMessage]);
+    } catch (error) {
+      console.error('Failed to get AI response:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Cancel editing
+  const cancelEdit = () => {
+    setEditingMessageId(null);
+    setEditText('');
+  };
+
+  // Handle file selection
+  const handleFileSelect = (e) => {
+    const files = Array.from(e.target.files);
+    setSelectedFiles(prev => [...prev, ...files]);
+  };
+
+  // Remove selected file
+  const removeFile = (index) => {
+    setSelectedFiles(prev => prev.filter((_, i) => i !== index));
   };
 
   const handleAnswerChange = (value) => {
@@ -549,14 +621,71 @@ function ChatPage() {
                 key={id}
                 className={`flex ${from === "user" ? "justify-end" : "justify-start"}`}
               >
-                <div
-                  className={`max-w-[80%] px-5 py-3 rounded-2xl shadow-sm ${
-                    from === "user"
-                      ? "bg-gradient-to-r from-red-600 to-red-700 text-white"
-                      : "bg-gray-100 text-gray-900"
-                  }`}
-                >
-                  <p className="text-sm leading-relaxed">{text}</p>
+                <div className="flex flex-col gap-2 max-w-[80%]">
+                  {editingMessageId === id ? (
+                    // Edit mode
+                    <div className="w-full">
+                      <textarea
+                        value={editText}
+                        onChange={(e) => setEditText(e.target.value)}
+                        className="w-full px-4 py-3 border-2 border-red-500 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-200 text-sm resize-none"
+                        rows={3}
+                        autoFocus
+                      />
+                      <div className="flex gap-2 mt-2">
+                        <button
+                          onClick={saveEdit}
+                          className="px-4 py-1.5 bg-red-600 text-white rounded-lg text-sm hover:bg-red-700 transition-colors"
+                        >
+                          Save & Resend
+                        </button>
+                        <button
+                          onClick={cancelEdit}
+                          className="px-4 py-1.5 bg-gray-200 text-gray-700 rounded-lg text-sm hover:bg-gray-300 transition-colors"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    // Normal message display
+                    <>
+                      <div
+                        className={`px-5 py-3 rounded-2xl shadow-sm ${
+                          from === "user"
+                            ? "bg-gradient-to-r from-red-600 to-red-700 text-white"
+                            : "bg-gray-100 text-gray-900"
+                        }`}
+                      >
+                        <p className="text-sm leading-relaxed">{text}</p>
+                      </div>
+                      
+                      {/* Action buttons */}
+                      <div className={`flex gap-2 px-2 ${from === "user" ? "justify-end" : "justify-start"}`}>
+                        <button
+                          onClick={() => copyToClipboard(text)}
+                          className="p-1.5 hover:bg-gray-200 rounded-lg transition-colors group"
+                          title="Copy"
+                        >
+                          <svg className="w-4 h-4 text-gray-500 group-hover:text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                          </svg>
+                        </button>
+                        
+                        {from === "user" && (
+                          <button
+                            onClick={() => startEdit(id, text)}
+                            className="p-1.5 hover:bg-gray-200 rounded-lg transition-colors group"
+                            title="Edit"
+                          >
+                            <svg className="w-4 h-4 text-gray-500 group-hover:text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                            </svg>
+                          </button>
+                        )}
+                      </div>
+                    </>
+                  )}
                 </div>
               </div>
             ))}
@@ -578,21 +707,66 @@ function ChatPage() {
         {/* Chat Input */}
         <div className="border-t border-gray-200 bg-white p-6">
           <div className="max-w-3xl mx-auto">
+            {/* Selected files preview */}
+            {selectedFiles.length > 0 && (
+              <div className="mb-3 flex flex-wrap gap-2">
+                {selectedFiles.map((file, index) => (
+                  <div key={index} className="flex items-center gap-2 bg-gray-100 px-3 py-1.5 rounded-lg text-sm">
+                    <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+                    </svg>
+                    <span className="text-gray-700">{file.name}</span>
+                    <button
+                      type="button"
+                      onClick={() => removeFile(index)}
+                      className="text-gray-500 hover:text-red-600"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+            
             <form
               onSubmit={(e) => {
                 e.preventDefault();
                 sendMessage();
               }}
-              className="flex gap-3 items-center"
+              className="flex gap-3 items-end"
             >
-              <input
-                type="text"
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                placeholder={isLoading ? "AI is thinking..." : "Type your message..."}
-                disabled={isLoading}
-                className="flex-1 px-5 py-3 border border-gray-300 rounded-xl focus:outline-none focus:border-red-500 focus:ring-2 focus:ring-red-100 text-sm disabled:opacity-50 bg-white shadow-sm"
-              />
+              <div className="flex-1 relative">
+                <input
+                  type="text"
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  placeholder={isLoading ? "AI is thinking..." : "Type your message..."}
+                  disabled={isLoading}
+                  className="w-full pl-5 pr-12 py-3 border border-gray-300 rounded-xl focus:outline-none focus:border-red-500 focus:ring-2 focus:ring-red-100 text-sm disabled:opacity-50 bg-white shadow-sm"
+                />
+                
+                {/* File upload button inside input */}
+                <label
+                  htmlFor="file-upload"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 cursor-pointer p-1.5 hover:bg-gray-100 rounded-lg transition-colors"
+                  title="Add photos or files"
+                >
+                  <svg className="w-5 h-5 text-gray-500 hover:text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+                  </svg>
+                </label>
+                <input
+                  id="file-upload"
+                  type="file"
+                  multiple
+                  onChange={handleFileSelect}
+                  className="hidden"
+                  accept="image/*,.pdf,.doc,.docx,.txt"
+                />
+              </div>
+              
               <button
                 type="submit"
                 disabled={!input.trim() || isLoading}
