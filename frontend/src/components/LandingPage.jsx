@@ -50,9 +50,6 @@ function LandingPage() {
                 <a href="#home" className="text-gray-700 hover:text-red-600 font-medium transition-colors">
                   Home
                 </a>
-                <a href="/dashboard" className="text-gray-700 hover:text-red-600 font-medium transition-colors">
-                  Dashboard
-                </a>
                 <a href="#features" className="text-gray-700 hover:text-red-600 font-medium transition-colors">
                   Features
                 </a>
@@ -70,10 +67,10 @@ function LandingPage() {
                     {user.user_metadata?.full_name || user.email?.split("@")[0]}
                   </span>
                   <button
-                    onClick={() => window.location.href = "/dashboard"}
+                    onClick={() => window.location.href = "/chat"}
                     className="px-6 py-2.5 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-xl font-semibold hover:from-red-700 hover:to-red-800 transition-all shadow-lg hover:shadow-xl transform hover:scale-105"
                   >
-                    Dashboard
+                    Start Learning
                   </button>
                 </div>
               ) : (
@@ -416,7 +413,7 @@ function LandingPage() {
               <h4 className="font-bold mb-4">Platform</h4>
               <ul className="space-y-2 text-gray-400">
                 <li><a href="#features" className="hover:text-red-400 transition-colors">Features</a></li>
-                <li><a href="/dashboard" className="hover:text-red-400 transition-colors">Dashboard</a></li>
+                <li><a href="#about" className="hover:text-red-400 transition-colors">About Us</a></li>
                 <li><a href="#" className="hover:text-red-400 transition-colors">Pricing</a></li>
               </ul>
             </div>

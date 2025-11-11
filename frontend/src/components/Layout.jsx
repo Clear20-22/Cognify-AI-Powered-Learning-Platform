@@ -35,9 +35,6 @@ function Layout({ children, showHero = false, heroContent = null }) {
             <a href="/" className="hover:underline">
               Home
             </a>
-            <a href="/dashboard" className="hover:underline">
-              Dashboard
-            </a>
             <a href="#features" className="hover:underline">
               Features
             </a>
@@ -102,9 +99,6 @@ function Layout({ children, showHero = false, heroContent = null }) {
           <div className="md:hidden mt-4 space-y-4 py-4 text-center">
             <a href="/" className="block hover:underline">
               Home
-            </a>
-            <a href="/dashboard" className="block hover:underline">
-              Dashboard
             </a>
             <a href="#features" className="block hover:underline">
               Features
