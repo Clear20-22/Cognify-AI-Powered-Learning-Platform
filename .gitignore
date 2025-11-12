@@ -12,11 +12,11 @@ dist
 dist-ssr
 *.local
 
-# Environment variables (removed .env to share with private collaborators)
-# .env
-# .env.local
-# .env.*.local
-# backend/.env
+# Environment variables
+.env
+.env.local
+.env.*.local
+backend/.env
 backend/venv/
 backend/__pycache__/
 **/__pycache__/
