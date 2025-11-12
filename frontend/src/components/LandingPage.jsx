@@ -15,11 +15,15 @@ import {
 function LandingPage() {
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [authMode, setAuthMode] = useState('signin');
-  const { user } = useAuth();
+  const { user, signOut } = useAuth();
 
   const openAuth = (mode) => {
     setAuthMode(mode);
     setShowAuthModal(true);
+  };
+
+  const handleSignOut = async () => {
+    await signOut();
   };
 
   return (
@@ -50,9 +54,6 @@ function LandingPage() {
                 <a href="#home" className="text-gray-700 hover:text-red-600 font-medium transition-colors">
                   Home
                 </a>
-                <a href="/dashboard" className="text-gray-700 hover:text-red-600 font-medium transition-colors">
-                  Dashboard
-                </a>
                 <a href="#features" className="text-gray-700 hover:text-red-600 font-medium transition-colors">
                   Features
                 </a>
@@ -67,13 +68,13 @@ function LandingPage() {
               {user ? (
                 <div className="flex items-center space-x-4">
                   <span className="text-gray-700 font-medium">
-                    {user.user_metadata?.full_name || user.email?.split("@")[0]}
+                    {user.name || user.email?.split("@")[0]}
                   </span>
                   <button
-                    onClick={() => window.location.href = "/dashboard"}
-                    className="px-6 py-2.5 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-xl font-semibold hover:from-red-700 hover:to-red-800 transition-all shadow-lg hover:shadow-xl transform hover:scale-105"
+                    onClick={handleSignOut}
+                    className="px-4 py-2 text-sm text-gray-700 hover:text-red-600 font-medium transition-colors border border-gray-300 hover:border-red-600 rounded-xl"
                   >
-                    Dashboard
+                    Sign Out
                   </button>
                 </div>
               ) : (
@@ -242,7 +243,10 @@ function LandingPage() {
 
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
             {/* Feature Card 1 */}
-            <div className="group bg-gradient-to-br from-white to-red-50 rounded-2xl p-8 shadow-lg hover:shadow-2xl transition-all transform hover:-translate-y-2 border border-red-100">
+            <div 
+              onClick={() => window.location.href = "/chat"}
+              className="group bg-gradient-to-br from-white to-red-50 rounded-2xl p-8 shadow-lg hover:shadow-2xl transition-all transform hover:-translate-y-2 border border-red-100 cursor-pointer"
+            >
               <div className="w-16 h-16 bg-gradient-to-br from-red-500 to-red-600 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform shadow-lg">
                 <BookOpenIcon className="w-8 h-8 text-white" />
               </div>
@@ -253,7 +257,10 @@ function LandingPage() {
             </div>
 
             {/* Feature Card 2 */}
-            <div className="group bg-gradient-to-br from-white to-red-50 rounded-2xl p-8 shadow-lg hover:shadow-2xl transition-all transform hover:-translate-y-2 border border-red-100">
+            <div 
+              onClick={() => window.location.href = "/chat"}
+              className="group bg-gradient-to-br from-white to-red-50 rounded-2xl p-8 shadow-lg hover:shadow-2xl transition-all transform hover:-translate-y-2 border border-red-100 cursor-pointer"
+            >
               <div className="w-16 h-16 bg-gradient-to-br from-orange-500 to-red-500 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform shadow-lg">
                 <DocumentTextIcon className="w-8 h-8 text-white" />
               </div>
@@ -264,7 +271,10 @@ function LandingPage() {
             </div>
 
             {/* Feature Card 3 */}
-            <div className="group bg-gradient-to-br from-white to-red-50 rounded-2xl p-8 shadow-lg hover:shadow-2xl transition-all transform hover:-translate-y-2 border border-red-100">
+            <div 
+              onClick={() => window.location.href = "/chat"}
+              className="group bg-gradient-to-br from-white to-red-50 rounded-2xl p-8 shadow-lg hover:shadow-2xl transition-all transform hover:-translate-y-2 border border-red-100 cursor-pointer"
+            >
               <div className="w-16 h-16 bg-gradient-to-br from-red-600 to-red-700 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform shadow-lg">
                 <AcademicCapIcon className="w-8 h-8 text-white" />
               </div>
@@ -275,7 +285,10 @@ function LandingPage() {
             </div>
 
             {/* Feature Card 4 */}
-            <div className="group bg-gradient-to-br from-white to-red-50 rounded-2xl p-8 shadow-lg hover:shadow-2xl transition-all transform hover:-translate-y-2 border border-red-100">
+            <div 
+              onClick={() => window.location.href = "/chat"}
+              className="group bg-gradient-to-br from-white to-red-50 rounded-2xl p-8 shadow-lg hover:shadow-2xl transition-all transform hover:-translate-y-2 border border-red-100 cursor-pointer"
+            >
               <div className="w-16 h-16 bg-gradient-to-br from-red-700 to-red-800 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform shadow-lg">
                 <SparklesIcon className="w-8 h-8 text-white" />
               </div>
@@ -416,7 +429,7 @@ function LandingPage() {
               <h4 className="font-bold mb-4">Platform</h4>
               <ul className="space-y-2 text-gray-400">
                 <li><a href="#features" className="hover:text-red-400 transition-colors">Features</a></li>
-                <li><a href="/dashboard" className="hover:text-red-400 transition-colors">Dashboard</a></li>
+                <li><a href="#about" className="hover:text-red-400 transition-colors">About Us</a></li>
                 <li><a href="#" className="hover:text-red-400 transition-colors">Pricing</a></li>
               </ul>
             </div>

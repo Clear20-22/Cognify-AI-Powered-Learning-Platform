@@ -1,6 +1,7 @@
 import { useState, useEffect, createContext, useContext } from "react";
 
 const AuthContext = createContext({});
+const API_URL = "http://localhost:8000";
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
@@ -10,8 +11,9 @@ export function AuthProvider({ children }) {
     // Get initial session from localStorage
     const getInitialSession = () => {
       try {
-        const storedUser = localStorage.getItem("demo_user");
-        if (storedUser) {
+        const storedUser = localStorage.getItem("user");
+        const token = localStorage.getItem("access_token");
+        if (storedUser && token) {
           setUser(JSON.parse(storedUser));
         }
       } catch (error) {
@@ -24,25 +26,70 @@ export function AuthProvider({ children }) {
     getInitialSession();
   }, []);
 
-  // Sign in anonymously for demo purposes
-  const signInAnonymously = async () => {
+  // Sign up with email and password
+  const signUp = async (email, password, fullName) => {
     try {
-      // Create a mock user for demo
-      const mockUser = {
-        id: crypto.randomUUID(),
-        email: "demo@example.com",
-        user_metadata: {
-          display_name: "Demo User",
+      console.log("Attempting signup to:", `${API_URL}/api/auth/signup`);
+      console.log("Signup data:", { email, fullName });
+      
+      const response = await fetch(`${API_URL}/api/auth/signup`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
         },
-      };
+        body: JSON.stringify({ email, password, fullName }),
+      });
 
-      setUser(mockUser);
-      localStorage.setItem("demo_user", JSON.stringify(mockUser));
+      console.log("Signup response status:", response.status);
+      
+      const data = await response.json();
+      console.log("Signup response data:", data);
 
-      return { user: mockUser, error: null };
+      if (!response.ok) {
+        return { user: null, error: { message: data.detail || "Sign up failed" } };
+      }
+
+      // Don't store user and token - let them sign in manually
+      // This creates the account but doesn't log them in
+      return { user: data.user, error: null };
     } catch (error) {
-      console.error("Error signing in anonymously:", error);
-      return { user: null, error };
+      console.error("Error signing up:", error);
+      return { user: null, error: { message: error.message || "Network error. Please check if backend is running." } };
+    }
+  };
+
+  // Sign in with email and password
+  const signIn = async (email, password) => {
+    try {
+      console.log("Attempting signin to:", `${API_URL}/api/auth/signin`);
+      console.log("Signin data:", { email });
+      
+      const response = await fetch(`${API_URL}/api/auth/signin`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email, password }),
+      });
+
+      console.log("Signin response status:", response.status);
+      
+      const data = await response.json();
+      console.log("Signin response data:", data);
+
+      if (!response.ok) {
+        return { user: null, error: { message: data.detail || "Sign in failed" } };
+      }
+
+      // Store user and token
+      setUser(data.user);
+      localStorage.setItem("user", JSON.stringify(data.user));
+      localStorage.setItem("access_token", data.access_token);
+
+      return { user: data.user, error: null };
+    } catch (error) {
+      console.error("Error signing in:", error);
+      return { user: null, error: { message: error.message || "Network error. Please check if backend is running." } };
     }
   };
 
@@ -50,7 +97,8 @@ export function AuthProvider({ children }) {
   const signOut = async () => {
     try {
       setUser(null);
-      localStorage.removeItem("demo_user");
+      localStorage.removeItem("user");
+      localStorage.removeItem("access_token");
       return { error: null };
     } catch (error) {
       console.error("Error in signOut:", error);
@@ -58,34 +106,19 @@ export function AuthProvider({ children }) {
     }
   };
 
-  // Sign in with email (simple localStorage-based auth)
-  const signInWithEmail = async (email, password) => {
-    try {
-      // Simple mock authentication
-      const mockUser = {
-        id: crypto.randomUUID(),
-        email: email,
-        user_metadata: {
-          display_name: email.split("@")[0],
-        },
-      };
-
-      setUser(mockUser);
-      localStorage.setItem("demo_user", JSON.stringify(mockUser));
-
-      return { user: mockUser, error: null };
-    } catch (error) {
-      console.error("Error signing in with email:", error);
-      return { user: null, error };
-    }
+  // Get authorization header
+  const getAuthHeader = () => {
+    const token = localStorage.getItem("access_token");
+    return token ? { Authorization: `Bearer ${token}` } : {};
   };
 
   const value = {
     user,
     loading,
-    signInAnonymously,
-    signInWithEmail,
+    signUp,
+    signIn,
     signOut,
+    getAuthHeader,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
@@ -103,25 +136,20 @@ export function useAuth() {
 export function useUserId() {
   const { user } = useAuth();
 
-  // Try to get from auth, fallback to localStorage demo user
+  // Get user ID from authenticated user
   if (user?.id) {
     return user.id;
   }
 
-  const demoUser = localStorage.getItem("demo_user");
-  if (demoUser) {
-    return JSON.parse(demoUser).id;
+  // Fallback to localStorage
+  const storedUser = localStorage.getItem("user");
+  if (storedUser) {
+    try {
+      return JSON.parse(storedUser).id;
+    } catch (error) {
+      console.error("Error parsing stored user:", error);
+    }
   }
 
-  // Generate and store a demo user ID
-  const demoUserId = crypto.randomUUID();
-  const mockUser = {
-    id: demoUserId,
-    email: "demo@example.com",
-    user_metadata: {
-      display_name: "Demo User",
-    },
-  };
-  localStorage.setItem("demo_user", JSON.stringify(mockUser));
-  return demoUserId;
+  return null;
 }

@@ -35,9 +35,6 @@ function Layout({ children, showHero = false, heroContent = null }) {
             <a href="/" className="hover:underline">
               Home
             </a>
-            <a href="/dashboard" className="hover:underline">
-              Dashboard
-            </a>
             <a href="#features" className="hover:underline">
               Features
             </a>
@@ -61,21 +58,13 @@ function Layout({ children, showHero = false, heroContent = null }) {
                 <div className="flex items-center space-x-4">
                   <div className="flex items-center space-x-2">
                     <Avatar
-                      src={user.user_metadata?.avatar_url}
-                      alt={`${
-                        user.user_metadata?.full_name ||
-                        user.email?.split("@")[0] ||
-                        "User"
-                      }'s avatar`}
+                      src={null}
+                      alt={`${user.name || user.email?.split("@")[0] || "User"}'s avatar`}
                       size="w-8 h-8"
-                      fallbackText={(user.user_metadata?.full_name ||
-                        user.email?.split("@")[0] ||
-                        "U")[0].toUpperCase()}
+                      fallbackText={(user.name || user.email?.split("@")[0] || "U")[0].toUpperCase()}
                     />
                     <span className="text-sm">
-                      {user.user_metadata?.full_name ||
-                        user.email?.split("@")[0] ||
-                        "User"}
+                      {user.name || user.email?.split("@")[0] || "User"}
                     </span>
                   </div>
                   <button
@@ -103,9 +92,6 @@ function Layout({ children, showHero = false, heroContent = null }) {
             <a href="/" className="block hover:underline">
               Home
             </a>
-            <a href="/dashboard" className="block hover:underline">
-              Dashboard
-            </a>
             <a href="#features" className="block hover:underline">
               Features
             </a>
@@ -117,21 +103,13 @@ function Layout({ children, showHero = false, heroContent = null }) {
                 <div className="space-y-2">
                   <div className="flex items-center justify-center space-x-2 py-2">
                     <Avatar
-                      src={user.user_metadata?.avatar_url}
-                      alt={`${
-                        user.user_metadata?.full_name ||
-                        user.email?.split("@")[0] ||
-                        "User"
-                      }'s avatar`}
+                      src={null}
+                      alt={`${user.name || user.email?.split("@")[0] || "User"}'s avatar`}
                       size="w-6 h-6"
-                      fallbackText={(user.user_metadata?.full_name ||
-                        user.email?.split("@")[0] ||
-                        "U")[0].toUpperCase()}
+                      fallbackText={(user.name || user.email?.split("@")[0] || "U")[0].toUpperCase()}
                     />
                     <span className="text-sm">
-                      {user.user_metadata?.full_name ||
-                        user.email?.split("@")[0] ||
-                        "User"}
+                      {user.name || user.email?.split("@")[0] || "User"}
                     </span>
                   </div>
                   <button

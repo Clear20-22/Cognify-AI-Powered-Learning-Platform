@@ -4,8 +4,8 @@ import { RouterProvider, createBrowserRouter } from 'react-router-dom'
 import './index.css'
 import LandingPage from './components/LandingPage'
 import ChatPage from './components/ChatPage'
-import Dashboard from './components/Dashboard'
 import History from './components/History'
+import { AuthProvider } from './hooks/useAuth'
 
 const router = createBrowserRouter([
   {
@@ -17,10 +17,6 @@ const router = createBrowserRouter([
     element: <ChatPage />,
   },
   {
-    path: "/dashboard",
-    element: <Dashboard />,
-  },
-  {
     path: "history",
     element: <History />,
   }
@@ -28,6 +24,8 @@ const router = createBrowserRouter([
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
-    <RouterProvider router={router} />
+    <AuthProvider>
+      <RouterProvider router={router} />
+    </AuthProvider>
   </StrictMode>,
 )
