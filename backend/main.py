@@ -70,42 +70,82 @@ app.add_middleware(
 
 class AIService:
     """
-    AI Service using Google Gemini for educational content generation.
+    AI Service supporting both Groq and Gemini for educational content generation.
     Provides intelligent responses, content generation, and adaptive learning.
+    Groq is primary, Gemini is fallback.
     """
     
     def __init__(self):
-        self.api_key = os.getenv("GEMINI_API_KEY")
-        self.model = None
+        self.groq_key = os.getenv("GROQ_API_KEY")
+        self.gemini_key = os.getenv("GEMINI_API_KEY")
+        self.groq_client = None
+        self.gemini_model = None
+        self.groq_model_name = "llama-3.3-70b-versatile"
+        self.gemini_model_name = "gemini-2.0-flash-exp"
+        self.active_provider = None
         self._initialize()
     
     def _initialize(self) -> None:
-        """Initialize the Gemini AI model."""
-        if not self.api_key:
-            logger.warning("⚠️  GEMINI_API_KEY not found. Using demo mode.")
-            return
+        """Initialize AI clients (Groq primary, Gemini fallback)."""
+        # Try Groq first
+        if self.groq_key:
+            try:
+                from groq import Groq
+                self.groq_client = Groq(api_key=self.groq_key)
+                self.active_provider = "groq"
+                logger.info(f"✅ Groq AI initialized successfully (Model: {self.groq_model_name})")
+            except Exception as e:
+                logger.error(f"❌ Failed to initialize Groq AI: {e}")
         
-        try:
-            import google.generativeai as genai
-            genai.configure(api_key=self.api_key)
-            self.model = genai.GenerativeModel('gemini-2.0-flash-exp')
-            logger.info("✅ Gemini AI initialized successfully")
-        except Exception as e:
-            logger.error(f"❌ Failed to initialize Gemini AI: {e}")
-            self.model = None
+        # Try Gemini as fallback
+        if self.gemini_key:
+            try:
+                import google.generativeai as genai
+                genai.configure(api_key=self.gemini_key)
+                self.gemini_model = genai.GenerativeModel(self.gemini_model_name)
+                if not self.active_provider:
+                    self.active_provider = "gemini"
+                logger.info(f"✅ Gemini AI initialized successfully (Model: {self.gemini_model_name})")
+            except Exception as e:
+                logger.error(f"❌ Failed to initialize Gemini AI: {e}")
+        
+        if not self.active_provider:
+            logger.warning("⚠️  No AI API keys found. Using demo mode.")
+            logger.warning("⚠️  Add GROQ_API_KEY or GEMINI_API_KEY to .env file")
     
     def generate_response(self, prompt: str, context: Optional[str] = None) -> str:
         """Generate AI response to a prompt."""
-        if not self.model:
+        if not self.active_provider:
             return self._demo_response(prompt)
         
-        try:
-            full_prompt = self._build_prompt(prompt, context)
-            response = self.model.generate_content(full_prompt)
-            return response.text
-        except Exception as e:
-            logger.error(f"AI generation error: {e}")
-            return f"I apologize, but I encountered an error: {str(e)}"
+        full_prompt = self._build_prompt(prompt, context)
+        
+        # Try Groq first
+        if self.groq_client:
+            try:
+                response = self.groq_client.chat.completions.create(
+                    model=self.groq_model_name,
+                    messages=[
+                        {"role": "system", "content": "You are an expert educational AI assistant for Cognify."},
+                        {"role": "user", "content": full_prompt}
+                    ],
+                    temperature=0.7,
+                    max_tokens=2000
+                )
+                return response.choices[0].message.content
+            except Exception as e:
+                logger.error(f"Groq AI error, trying Gemini fallback: {e}")
+        
+        # Fallback to Gemini
+        if self.gemini_model:
+            try:
+                response = self.gemini_model.generate_content(full_prompt)
+                return response.text
+            except Exception as e:
+                logger.error(f"Gemini AI error: {e}")
+                return f"I apologize, but I encountered an error: {str(e)}"
+        
+        return self._demo_response(prompt)
     
     def _build_prompt(self, prompt: str, context: Optional[str] = None) -> str:
         """Build a comprehensive prompt for the AI."""
@@ -136,9 +176,13 @@ Always:
 You asked: *{prompt}*
 
 **Note:** This is a demo response. To enable real AI-powered responses:
-1. Get a Google Gemini API key from: https://makersuite.google.com/app/apikey
-2. Add it to your `.env` file as `GEMINI_API_KEY=your_key_here`
-3. Restart the backend server
+1. Get a Groq API key from: https://console.groq.com/keys
+   OR
+2. Get a Gemini API key from: https://makersuite.google.com/app/apikey
+3. Add to your `.env` file:
+   - `GROQ_API_KEY=your_key_here` (Primary)
+   - `GEMINI_API_KEY=your_key_here` (Fallback)
+4. Restart the backend server
 
 **Features available with real AI:**
 - Intelligent, context-aware responses
@@ -156,11 +200,10 @@ Ready to unlock the full potential of Cognify! 🚀"""
         num_exchanges: int = 3
     ) -> List[Dict[str, str]]:
         """Generate an educational chat conversation on a topic."""
-        if not self.model:
+        if not self.active_provider:
             return self._demo_conversation(topic, difficulty)
         
-        try:
-            prompt = f"""Generate an educational conversation about {topic} at {difficulty} difficulty level.
+        prompt = f"""Generate an educational conversation about {topic} at {difficulty} difficulty level.
 
 Create {num_exchanges} question-answer exchanges that:
 1. Start with fundamentals and build up complexity
@@ -173,12 +216,32 @@ Q: [Student question]
 A: [Expert answer]
 
 Make it natural and educational."""
-            
-            response = self.model.generate_content(prompt)
-            return self._parse_conversation(response.text)
-        except Exception as e:
-            logger.error(f"Conversation generation error: {e}")
-            return self._demo_conversation(topic, difficulty)
+        
+        # Try Groq first
+        if self.groq_client:
+            try:
+                response = self.groq_client.chat.completions.create(
+                    model=self.groq_model_name,
+                    messages=[
+                        {"role": "system", "content": "You are an expert educational AI assistant."},
+                        {"role": "user", "content": prompt}
+                    ],
+                    temperature=0.8,
+                    max_tokens=2000
+                )
+                return self._parse_conversation(response.choices[0].message.content)
+            except Exception as e:
+                logger.error(f"Groq conversation error, trying Gemini: {e}")
+        
+        # Fallback to Gemini
+        if self.gemini_model:
+            try:
+                response = self.gemini_model.generate_content(prompt)
+                return self._parse_conversation(response.text)
+            except Exception as e:
+                logger.error(f"Gemini conversation error: {e}")
+        
+        return self._demo_conversation(topic, difficulty)
     
     def _parse_conversation(self, text: str) -> List[Dict[str, str]]:
         """Parse AI-generated conversation into structured format."""
@@ -230,7 +293,7 @@ Make it natural and educational."""
             },
             {
                 "role": "assistant",
-                "content": f"The key concepts would be explained here with real AI. Get your Gemini API key to unlock full features!"
+                "content": f"The key concepts would be explained here with real AI. Get your Groq API key to unlock full features!"
             }
         ]
     
@@ -241,11 +304,10 @@ Make it natural and educational."""
         num_questions: int = 5
     ) -> List[Dict[str, Any]]:
         """Generate exam questions on a topic."""
-        if not self.model:
+        if not self.active_provider:
             return self._demo_exam(topic, num_questions)
         
-        try:
-            prompt = f"""Create {num_questions} {difficulty} level exam questions about {topic}.
+        prompt = f"""Create {num_questions} {difficulty} level exam questions about {topic}.
 
 For each question provide:
 1. Question text
@@ -261,12 +323,32 @@ C) [option]
 D) [option]
 Correct: [letter]
 Explanation: [text]"""
-            
-            response = self.model.generate_content(prompt)
-            return self._parse_exam_questions(response.text)
-        except Exception as e:
-            logger.error(f"Exam generation error: {e}")
-            return self._demo_exam(topic, num_questions)
+        
+        # Try Groq first
+        if self.groq_client:
+            try:
+                response = self.groq_client.chat.completions.create(
+                    model=self.groq_model_name,
+                    messages=[
+                        {"role": "system", "content": "You are an expert exam creator for educational purposes."},
+                        {"role": "user", "content": prompt}
+                    ],
+                    temperature=0.7,
+                    max_tokens=2000
+                )
+                return self._parse_exam_questions(response.choices[0].message.content)
+            except Exception as e:
+                logger.error(f"Groq exam error, trying Gemini: {e}")
+        
+        # Fallback to Gemini
+        if self.gemini_model:
+            try:
+                response = self.gemini_model.generate_content(prompt)
+                return self._parse_exam_questions(response.text)
+            except Exception as e:
+                logger.error(f"Gemini exam error: {e}")
+        
+        return self._demo_exam(topic, num_questions)
     
     def _parse_exam_questions(self, text: str) -> List[Dict[str, Any]]:
         """Parse AI-generated exam questions."""
@@ -437,15 +519,23 @@ async def root():
 @app.get("/health", tags=["Health"])
 async def health_check():
     """Health check endpoint."""
+    providers = []
+    if ai_service.groq_client:
+        providers.append(f"Groq ({ai_service.groq_model_name})")
+    if ai_service.gemini_model:
+        providers.append(f"Gemini ({ai_service.gemini_model_name})")
+    
     return {
         "status": "healthy",
         "timestamp": datetime.now().isoformat(),
         "service": "Cognify AI Learning Platform",
         "version": "3.0.0",
         "ai_service": {
-            "available": ai_service.model is not None,
-            "provider": "Google Gemini",
-            "model": "gemini-2.0-flash-exp" if ai_service.model else "demo"
+            "available": ai_service.active_provider is not None,
+            "primary_provider": ai_service.active_provider or "demo",
+            "available_providers": providers if providers else ["demo"],
+            "groq_enabled": ai_service.groq_client is not None,
+            "gemini_enabled": ai_service.gemini_model is not None
         },
         "features": {
             "chat": True,
@@ -767,7 +857,16 @@ async def get_user(user_id: str):
 async def startup_event():
     """Run on application startup."""
     logger.info("🚀 Cognify AI Learning Platform starting...")
-    logger.info(f"✅ AI Service: {'Enabled' if ai_service.model else 'Demo Mode'}")
+    if ai_service.active_provider:
+        providers = []
+        if ai_service.groq_client:
+            providers.append("Groq")
+        if ai_service.gemini_model:
+            providers.append("Gemini")
+        logger.info(f"✅ AI Service: Enabled ({', '.join(providers)})")
+        logger.info(f"✅ Primary Provider: {ai_service.active_provider.capitalize()}")
+    else:
+        logger.info("✅ AI Service: Demo Mode")
     logger.info("✅ Server ready at http://localhost:8000")
     logger.info("📚 API Docs at http://localhost:8000/docs")
 
