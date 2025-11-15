@@ -586,6 +586,19 @@ class SignInRequest(BaseModel):
     email: str = Field(..., description="User email")
     password: str = Field(..., description="User password")
 
+class NoteCreateRequest(BaseModel):
+    """Request to create a new note from AI response."""
+    user_id: str = Field(..., description="User ID")
+    content: str = Field(..., description="Note content", min_length=1)
+    chat_id: Optional[str] = Field(None, description="Associated chat ID")
+    pdf_name: Optional[str] = Field(None, description="Associated PDF document name")
+    tags: Optional[List[str]] = Field(default_factory=list, description="Tags for organizing notes")
+
+class NoteUpdateRequest(BaseModel):
+    """Request to update an existing note."""
+    content: Optional[str] = Field(None, description="Updated note content")
+    tags: Optional[List[str]] = Field(None, description="Updated tags")
+
 # ============================================================================
 # API Routes
 # ============================================================================
@@ -1057,6 +1070,159 @@ async def get_user(user_id: str):
             detail="User not found"
         )
     return user
+
+# ============================================================================
+# Notes Endpoints
+# ============================================================================
+
+@app.post("/api/notes", tags=["Notes"])
+async def create_note(request: NoteCreateRequest):
+    """
+    Save an AI response as a note for later review.
+    
+    Notes are linked to:
+    - User ID (required)
+    - Chat ID (optional)
+    - PDF document (optional)
+    - Timestamp (auto-generated)
+    """
+    try:
+        import uuid
+        note_id = f"note_{uuid.uuid4().hex[:12]}"
+        
+        note_data = {
+            "user_id": request.user_id,
+            "content": request.content,
+            "chat_id": request.chat_id,
+            "pdf_name": request.pdf_name,
+            "tags": request.tags or [],
+        }
+        
+        note = await app.state.data_store.add_note(note_id, note_data)
+        
+        return {
+            "success": True,
+            "note_id": note_id,
+            "note": note,
+            "message": "Note saved successfully"
+        }
+        
+    except Exception as e:
+        logger.error(f"Create note error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to save note: {str(e)}"
+        )
+
+@app.get("/api/notes/{note_id}", tags=["Notes"])
+async def get_note(note_id: str):
+    """Get a specific note by ID."""
+    note = await app.state.data_store.get_note(note_id)
+    if not note:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Note not found"
+        )
+    return {
+        "success": True,
+        "note": note
+    }
+
+@app.get("/api/users/{user_id}/notes", tags=["Notes"])
+async def get_user_notes(user_id: str, limit: int = 100):
+    """
+    Get all notes for a user.
+    
+    Returns notes sorted by creation date (newest first).
+    Useful for reviewing saved AI responses.
+    """
+    try:
+        notes = await app.state.data_store.get_user_notes(user_id, limit)
+        
+        return {
+            "success": True,
+            "count": len(notes),
+            "notes": notes,
+            "user_id": user_id
+        }
+        
+    except Exception as e:
+        logger.error(f"Get user notes error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to get notes: {str(e)}"
+        )
+
+@app.patch("/api/notes/{note_id}", tags=["Notes"])
+async def update_note(note_id: str, request: NoteUpdateRequest):
+    """
+    Update an existing note.
+    
+    Can update content and/or tags.
+    """
+    try:
+        updates = {}
+        if request.content is not None:
+            updates["content"] = request.content
+        if request.tags is not None:
+            updates["tags"] = request.tags
+        
+        if not updates:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="No updates provided"
+            )
+        
+        note = await app.state.data_store.update_note(note_id, updates)
+        if not note:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Note not found"
+            )
+        
+        return {
+            "success": True,
+            "note": note,
+            "message": "Note updated successfully"
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Update note error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to update note: {str(e)}"
+        )
+
+@app.delete("/api/notes/{note_id}", tags=["Notes"])
+async def delete_note(note_id: str):
+    """
+    Delete a note.
+    
+    Permanently removes the note from storage.
+    """
+    try:
+        success = await app.state.data_store.delete_note(note_id)
+        if not success:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Note not found"
+            )
+        
+        return {
+            "success": True,
+            "message": "Note deleted successfully"
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Delete note error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to delete note: {str(e)}"
+        )
 
 # ============================================================================
 # Application Startup/Shutdown

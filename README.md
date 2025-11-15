@@ -43,6 +43,7 @@
 - **AI-Powered Content Generation**: Leverages Google Gemini AI to create educational content
 - **Interactive Chat Interface**: Engage in conversational learning with AI tutors
 - **Dynamic Exam Generation**: Automatically generates exams from chat conversations
+- **Notes Management**: Save important AI responses for later review with full CRUD operations
 - **User Authentication**: Secure login and signup with Supabase Auth
 - **Progress Tracking**: Monitor learning history and exam performance
 - **Responsive Design**: Works seamlessly on desktop, tablet, and mobile

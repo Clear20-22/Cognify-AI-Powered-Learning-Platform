@@ -282,6 +282,115 @@ class ApiService {
       throw new Error(`Failed to complete exam: ${error.message}`);
     }
   }
+
+  // Notes API methods
+  async saveNote(userId, content, chatId = null, pdfName = null, tags = []) {
+    try {
+      const response = await fetch(`${this.baseURL}/api/notes`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          user_id: userId,
+          content: content,
+          chat_id: chatId,
+          pdf_name: pdfName,
+          tags: tags
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('API Error:', error);
+      throw new Error(`Failed to save note: ${error.message}`);
+    }
+  }
+
+  async getNote(noteId) {
+    try {
+      const response = await fetch(`${this.baseURL}/api/notes/${noteId}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('API Error:', error);
+      throw new Error(`Failed to get note: ${error.message}`);
+    }
+  }
+
+  async getUserNotes(userId, limit = 100) {
+    try {
+      const response = await fetch(`${this.baseURL}/api/users/${userId}/notes?limit=${limit}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('API Error:', error);
+      throw new Error(`Failed to get user notes: ${error.message}`);
+    }
+  }
+
+  async updateNote(noteId, updates) {
+    try {
+      const response = await fetch(`${this.baseURL}/api/notes/${noteId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(updates)
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('API Error:', error);
+      throw new Error(`Failed to update note: ${error.message}`);
+    }
+  }
+
+  async deleteNote(noteId) {
+    try {
+      const response = await fetch(`${this.baseURL}/api/notes/${noteId}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('API Error:', error);
+      throw new Error(`Failed to delete note: ${error.message}`);
+    }
+  }
 }
 
 export const apiService = new ApiService();

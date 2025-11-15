@@ -85,6 +85,16 @@ class Database:
             await db.sessions.create_index("created_at")
             logger.info("✅ Created indexes for 'sessions' collection")
             
+            # Create notes collection with indexes
+            if 'notes' not in await db.list_collection_names():
+                await db.create_collection('notes')
+                logger.info("✅ Created 'notes' collection")
+            
+            await db.notes.create_index("user_id")
+            await db.notes.create_index("created_at")
+            await db.notes.create_index([("user_id", 1), ("created_at", -1)])  # Compound index for queries
+            logger.info("✅ Created indexes for 'notes' collection")
+            
         except Exception as e:
             logger.warning(f"⚠️  Error initializing collections: {e}")
     
@@ -110,6 +120,7 @@ class MongoDataStore:
         self.chats = db.chats
         self.exams = db.exams
         self.sessions = db.sessions
+        self.notes = db.notes
     
     async def add_user(self, user_id: str, user_data: Dict) -> Dict:
         """Add user to database"""
@@ -204,6 +215,71 @@ class MongoDataStore:
         """Update exam in database"""
         try:
             updates["updated_at"] = datetime.now().isoformat()
+            
+            await self.exams.update_one(
+                {"_id": exam_id},
+                {"$set": updates}
+            )
+            return await self.get_exam(exam_id)
+        except Exception as e:
+            logger.error(f"Error updating exam: {e}")
+            return None
+    
+    async def add_note(self, note_id: str, note_data: Dict) -> Dict:
+        """Add note to database"""
+        try:
+            note_data["_id"] = note_id
+            note_data["id"] = note_id
+            note_data["created_at"] = datetime.now().isoformat()
+            note_data["updated_at"] = datetime.now().isoformat()
+            
+            await self.notes.insert_one(note_data)
+            return note_data
+        except Exception as e:
+            logger.error(f"Error adding note: {e}")
+            return {}
+    
+    async def get_note(self, note_id: str) -> Optional[Dict]:
+        """Get note from database"""
+        try:
+            note = await self.notes.find_one({"_id": note_id})
+            return note
+        except Exception as e:
+            logger.error(f"Error getting note: {e}")
+            return None
+    
+    async def get_user_notes(self, user_id: str, limit: int = 100) -> List[Dict]:
+        """Get all notes for a user, sorted by creation date (newest first)"""
+        try:
+            cursor = self.notes.find({"user_id": user_id}).sort("created_at", -1).limit(limit)
+            notes = await cursor.to_list(length=limit)
+            return notes
+        except Exception as e:
+            logger.error(f"Error getting user notes: {e}")
+            return []
+    
+    async def update_note(self, note_id: str, updates: Dict) -> Optional[Dict]:
+        """Update note in database"""
+        try:
+            updates["updated_at"] = datetime.now().isoformat()
+            
+            await self.notes.update_one(
+                {"_id": note_id},
+                {"$set": updates}
+            )
+            return await self.get_note(note_id)
+        except Exception as e:
+            logger.error(f"Error updating note: {e}")
+            return None
+    
+    async def delete_note(self, note_id: str) -> bool:
+        """Delete note from database"""
+        try:
+            result = await self.notes.delete_one({"_id": note_id})
+            return result.deleted_count > 0
+        except Exception as e:
+            logger.error(f"Error deleting note: {e}")
+            return False
             
             result = await self.exams.find_one_and_update(
                 {"_id": exam_id},

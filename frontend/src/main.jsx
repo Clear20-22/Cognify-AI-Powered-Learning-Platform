@@ -5,6 +5,7 @@ import './index.css'
 import LandingPage from './components/LandingPage'
 import ChatPage from './components/ChatPage'
 import History from './components/History'
+import Notes from './components/Notes'
 import { AuthProvider } from './hooks/useAuth'
 
 const router = createBrowserRouter([
@@ -17,8 +18,12 @@ const router = createBrowserRouter([
     element: <ChatPage />,
   },
   {
-    path: "history",
+    path: "/history",
     element: <History />,
+  },
+  {
+    path: "/notes",
+    element: <Notes />,
   }
 ]);
 

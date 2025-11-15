@@ -328,6 +328,29 @@ function ChatPage() {
     });
   };
 
+  // Save AI response as note
+  const saveAsNote = async (text, messageId) => {
+    try {
+      const result = await apiService.saveNote(
+        userId,
+        text,
+        currentChat?.chat_id || null,
+        null, // pdf_name - can be added later if PDF upload is implemented
+        [] // tags - can be added with a tag input UI
+      );
+      
+      if (result.success) {
+        // Show success feedback
+        console.log('Note saved successfully:', result.note_id);
+        // You could add a toast notification here
+        alert('✅ Note saved successfully!');
+      }
+    } catch (error) {
+      console.error('Failed to save note:', error);
+      alert('❌ Failed to save note. Please try again.');
+    }
+  };
+
   // Start editing a message
   const startEdit = (messageId, text) => {
     setEditingMessageId(messageId);
@@ -561,6 +584,18 @@ function ChatPage() {
         {/* Navigation Items */}
         <div className="flex-1 overflow-y-auto p-2">
           <div className="space-y-1">
+            {/* My Notes */}
+            <button 
+              onClick={() => navigate("/notes")}
+              className="flex items-center gap-3 w-full p-3 hover:bg-red-800 rounded-lg transition-colors text-left"
+              title="My Notes"
+            >
+              <svg className="w-5 h-5 text-red-300 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+              </svg>
+              {sidebarOpen && <span className="text-sm text-red-100 truncate flex-1">My Notes</span>}
+            </button>
+            
             {/* Recent Chats */}
             {sidebarOpen && (
               <>
@@ -702,6 +737,18 @@ function ChatPage() {
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
                           </svg>
                         </button>
+                        
+                        {from === "ai" && (
+                          <button
+                            onClick={() => saveAsNote(text, id)}
+                            className="p-1.5 hover:bg-red-100 rounded-lg transition-colors group"
+                            title="Save as Note"
+                          >
+                            <svg className="w-4 h-4 text-red-500 group-hover:text-red-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+                            </svg>
+                          </button>
+                        )}
                         
                         {from === "user" && (
                           <button
