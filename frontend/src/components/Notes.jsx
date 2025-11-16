@@ -16,22 +16,24 @@ function Notes({ onNavigate }) {
   const { user, signOut } = useAuth();
 
   useEffect(() => {
+    const loadNotes = async () => {
+      if (!userId) return;
+
+      try {
+        setLoading(true);
+        const result = await apiService.getUserNotes(userId);
+        if (result.success) {
+          setNotes(result.notes);
+        }
+      } catch (error) {
+        console.error("Failed to load notes:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
     loadNotes();
   }, [userId]);
-
-  const loadNotes = async () => {
-    try {
-      setLoading(true);
-      const result = await apiService.getUserNotes(userId);
-      if (result.success) {
-        setNotes(result.notes);
-      }
-    } catch (error) {
-      console.error("Failed to load notes:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleSignOut = async () => {
     await signOut();

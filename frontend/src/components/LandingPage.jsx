@@ -12,7 +12,12 @@ import {
   UserGroupIcon,
 } from "@heroicons/react/24/outline";
 
-function LandingPage({ showAuthModal, setShowAuthModal, onAuthSuccess }) {
+function LandingPage({
+  showAuthModal,
+  setShowAuthModal,
+  onAuthSuccess,
+  onGetStarted,
+}) {
   const [authMode, setAuthMode] = useState("signin");
   const { user, signOut } = useAuth();
 

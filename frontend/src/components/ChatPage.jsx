@@ -146,39 +146,6 @@ function ChatPage({ onNavigate }) {
     }
   };
 
-  // Load exams for current chat
-  const loadChatExams = async () => {
-    try {
-      setExamLoading(true);
-
-      if (currentChat) {
-        const exams = await apiService.getChatExams(currentChat.chat_id);
-        const inProgressExam = exams.find(
-          (exam) => exam.status === "in_progress"
-        );
-
-        if (inProgressExam) {
-          setCurrentExam(inProgressExam);
-          setExamStarted(true);
-          setShowExamPanel(true); // Show panel when loading existing exam
-          // Load existing answers
-          const existingAnswers = {};
-          inProgressExam.exam_data.user_answers.forEach((answer) => {
-            existingAnswers[answer.question_id] = answer.answer;
-          });
-          setAnswers(existingAnswers);
-        }
-      }
-
-      // Don't automatically create new content on mount
-      // User should click "New Chat" button to start
-    } catch (error) {
-      console.error("Failed to load exams:", error);
-    } finally {
-      setExamLoading(false);
-    }
-  };
-
   // Create demo content when API is not available
   const createDemoChat = async (
     subject = "Mathematics",
@@ -223,8 +190,37 @@ function ChatPage({ onNavigate }) {
 
   // Load initial content when component mounts
   useEffect(() => {
+    const loadChatExams = async () => {
+      try {
+        setExamLoading(true);
+
+        if (currentChat) {
+          const exams = await apiService.getChatExams(currentChat.chat_id);
+          const inProgressExam = exams.find(
+            (exam) => exam.status === "in_progress"
+          );
+
+          if (inProgressExam) {
+            setCurrentExam(inProgressExam);
+            setExamStarted(true);
+            setShowExamPanel(true); // Show panel when loading existing exam
+            // Load existing answers
+            const existingAnswers = {};
+            inProgressExam.exam_data.user_answers.forEach((answer) => {
+              existingAnswers[answer.question_id] = answer.answer;
+            });
+            setAnswers(existingAnswers);
+          }
+        }
+      } catch (error) {
+        console.error("Failed to load chat exams:", error);
+      } finally {
+        setExamLoading(false);
+      }
+    };
+
     loadChatExams();
-  }, [userId]);
+  }, [userId, currentChat]);
 
   // Create a demo exam for demonstration
   const createDemoExam = async () => {

@@ -61,22 +61,22 @@ function Dashboard({ onNavigate }) {
 
   useEffect(() => {
     // Load stats when component mounts
+    const loadStats = async () => {
+      // TODO: Replace with actual API calls
+      setStats({
+        totalChats: 12,
+        totalNotes: 25,
+        totalExams: 8,
+        studyStreak: 7,
+        hoursStudied: 24.5,
+        averageScore: 87,
+      });
+    };
+
     if (user) {
       loadStats();
     }
   }, [user]);
-
-  const loadStats = async () => {
-    // TODO: Replace with actual API calls
-    setStats({
-      totalChats: 12,
-      totalNotes: 25,
-      totalExams: 8,
-      studyStreak: 7,
-      hoursStudied: 24.5,
-      averageScore: 87,
-    });
-  };
 
   const handleSignOut = async () => {
     await signOut();
