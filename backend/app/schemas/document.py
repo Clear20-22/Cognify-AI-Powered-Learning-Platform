@@ -28,6 +28,7 @@ class DocumentResponse(BaseModel):
     file_size: int
     page_count: Optional[int] = None
     processing_status: str
+    extracted_text: Optional[str] = None
     metadata: Dict[str, Any] = Field(default_factory=dict)
     created_at: datetime
     processed_at: Optional[datetime] = None

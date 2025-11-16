@@ -27,6 +27,10 @@ function Documents({ onNavigate }) {
   const [selectedFile, setSelectedFile] = useState(null);
   const [processing, setProcessing] = useState(null);
   const [deleteConfirm, setDeleteConfirm] = useState(null);
+  const [showResultModal, setShowResultModal] = useState(false);
+  const [resultData, setResultData] = useState(null);
+  const [viewDocument, setViewDocument] = useState(null);
+  const [viewPdfModal, setViewPdfModal] = useState(null);
 
   useEffect(() => {
     const loadDocuments = async () => {
@@ -113,9 +117,18 @@ function Documents({ onNavigate }) {
       setProcessing(docId);
       const result = await apiService.processDocument(docId, action);
       if (result.success) {
-        alert(`✅ Document processed successfully!`);
-        // Show results in a modal or navigate to notes/chat
-        console.log("Processing result:", result.result);
+        // Show results in modal
+        const actionTitles = {
+          generate_notes: "📝 Study Notes",
+          summarize: "✨ Summary",
+          generate_quiz: "📊 Quiz",
+        };
+        setResultData({
+          title: actionTitles[action] || "Results",
+          action: action,
+          content: result.result,
+        });
+        setShowResultModal(true);
       }
     } catch (error) {
       console.error("Failed to process document:", error);
@@ -377,28 +390,48 @@ function Documents({ onNavigate }) {
                   </div>
 
                   {doc.processing_status === "completed" && (
-                    <div className="grid grid-cols-3 gap-2">
-                      <button
-                        onClick={() => handleProcess(doc.id, "generate_notes")}
-                        disabled={processing === doc.id}
-                        className="px-3 py-2 bg-blue-50 text-blue-700 rounded-lg text-sm font-medium hover:bg-blue-100 transition-colors disabled:opacity-50"
-                      >
-                        📝 Notes
-                      </button>
-                      <button
-                        onClick={() => handleProcess(doc.id, "generate_quiz")}
-                        disabled={processing === doc.id}
-                        className="px-3 py-2 bg-green-50 text-green-700 rounded-lg text-sm font-medium hover:bg-green-100 transition-colors disabled:opacity-50"
-                      >
-                        📊 Quiz
-                      </button>
-                      <button
-                        onClick={() => handleProcess(doc.id, "summarize")}
-                        disabled={processing === doc.id}
-                        className="px-3 py-2 bg-purple-50 text-purple-700 rounded-lg text-sm font-medium hover:bg-purple-100 transition-colors disabled:opacity-50"
-                      >
-                        ✨ Summary
-                      </button>
+                    <div className="space-y-2">
+                      <div className="grid grid-cols-3 gap-2">
+                        <button
+                          onClick={() =>
+                            handleProcess(doc.id, "generate_notes")
+                          }
+                          disabled={processing === doc.id}
+                          className="px-3 py-2 bg-blue-50 text-blue-700 rounded-lg text-sm font-medium hover:bg-blue-100 transition-colors disabled:opacity-50"
+                        >
+                          📝 Notes
+                        </button>
+                        <button
+                          onClick={() => handleProcess(doc.id, "generate_quiz")}
+                          disabled={processing === doc.id}
+                          className="px-3 py-2 bg-green-50 text-green-700 rounded-lg text-sm font-medium hover:bg-green-100 transition-colors disabled:opacity-50"
+                        >
+                          📊 Quiz
+                        </button>
+                        <button
+                          onClick={() => handleProcess(doc.id, "summarize")}
+                          disabled={processing === doc.id}
+                          className="px-3 py-2 bg-purple-50 text-purple-700 rounded-lg text-sm font-medium hover:bg-purple-100 transition-colors disabled:opacity-50"
+                        >
+                          ✨ Summary
+                        </button>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2 mt-2">
+                        <button
+                          onClick={() => setViewPdfModal(doc)}
+                          className="px-3 py-2 bg-indigo-50 text-indigo-700 rounded-lg text-sm font-medium hover:bg-indigo-100 transition-colors flex items-center justify-center space-x-2"
+                        >
+                          <DocumentArrowUpIcon className="w-4 h-4" />
+                          <span>View PDF</span>
+                        </button>
+                        <button
+                          onClick={() => setViewDocument(doc)}
+                          className="px-3 py-2 bg-gray-50 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-100 transition-colors flex items-center justify-center space-x-2"
+                        >
+                          <DocumentTextIcon className="w-4 h-4" />
+                          <span>View Text</span>
+                        </button>
+                      </div>
                     </div>
                   )}
                 </div>
@@ -407,6 +440,180 @@ function Documents({ onNavigate }) {
           )}
         </div>
       </div>
+
+      {/* Result Modal */}
+      {showResultModal && resultData && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 overflow-y-auto">
+          <div className="bg-white rounded-2xl p-8 max-w-4xl w-full shadow-2xl my-8">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-2xl font-bold text-gray-800">
+                {resultData.title}
+              </h3>
+              <button
+                onClick={() => setShowResultModal(false)}
+                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                <XMarkIcon className="w-6 h-6 text-gray-600" />
+              </button>
+            </div>
+
+            <div className="prose max-w-none">
+              {resultData.action === "generate_notes" &&
+                resultData.content.notes && (
+                  <div className="bg-blue-50 rounded-xl p-6 whitespace-pre-wrap text-gray-800">
+                    {resultData.content.notes}
+                  </div>
+                )}
+
+              {resultData.action === "summarize" &&
+                resultData.content.summary && (
+                  <div className="bg-purple-50 rounded-xl p-6 whitespace-pre-wrap text-gray-800">
+                    {resultData.content.summary}
+                  </div>
+                )}
+
+              {resultData.action === "generate_quiz" && (
+                <div className="bg-green-50 rounded-xl p-6 text-gray-800">
+                  {resultData.content.message || "Quiz generation coming soon!"}
+                </div>
+              )}
+            </div>
+
+            <div className="flex space-x-3 mt-6">
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(
+                    resultData.content.notes || resultData.content.summary || ""
+                  );
+                  alert("✅ Copied to clipboard!");
+                }}
+                className="flex-1 px-4 py-2.5 border border-gray-300 text-gray-700 rounded-xl font-medium hover:bg-gray-50 transition-colors"
+              >
+                📋 Copy
+              </button>
+              <button
+                onClick={() => setShowResultModal(false)}
+                className="flex-1 px-4 py-2.5 bg-red-600 text-white rounded-xl font-medium hover:bg-red-700 transition-colors"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* View Document Modal */}
+      {viewDocument && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 overflow-y-auto">
+          <div className="bg-white rounded-2xl p-8 max-w-4xl w-full shadow-2xl my-8 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h3 className="text-2xl font-bold text-gray-800">
+                  {viewDocument.filename}
+                </h3>
+                <p className="text-sm text-gray-500 mt-1">
+                  {formatFileSize(viewDocument.file_size)} •{" "}
+                  {viewDocument.page_count} pages
+                </p>
+              </div>
+              <button
+                onClick={() => setViewDocument(null)}
+                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                <XMarkIcon className="w-6 h-6 text-gray-600" />
+              </button>
+            </div>
+
+            <div className="bg-gray-50 rounded-xl p-6">
+              {viewDocument.extracted_text ? (
+                <div className="whitespace-pre-wrap text-gray-800 font-mono text-sm leading-relaxed">
+                  {viewDocument.extracted_text}
+                </div>
+              ) : (
+                <div className="text-center py-12">
+                  <DocumentTextIcon className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                  <p className="text-gray-600">
+                    Text extraction in progress...
+                  </p>
+                </div>
+              )}
+            </div>
+
+            <div className="flex space-x-3 mt-6">
+              <button
+                onClick={() => {
+                  if (viewDocument.extracted_text) {
+                    navigator.clipboard.writeText(viewDocument.extracted_text);
+                    alert("✅ Text copied to clipboard!");
+                  }
+                }}
+                disabled={!viewDocument.extracted_text}
+                className="flex-1 px-4 py-2.5 border border-gray-300 text-gray-700 rounded-xl font-medium hover:bg-gray-50 transition-colors disabled:opacity-50"
+              >
+                📋 Copy Text
+              </button>
+              <button
+                onClick={() => setViewDocument(null)}
+                className="flex-1 px-4 py-2.5 bg-red-600 text-white rounded-xl font-medium hover:bg-red-700 transition-colors"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* PDF Viewer Modal */}
+      {viewPdfModal && (
+        <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl w-full h-full max-w-7xl max-h-[95vh] shadow-2xl flex flex-col">
+            <div className="flex items-center justify-between p-6 border-b border-gray-200">
+              <div>
+                <h3 className="text-2xl font-bold text-gray-800">
+                  {viewPdfModal.filename}
+                </h3>
+                <p className="text-sm text-gray-500 mt-1">
+                  {formatFileSize(viewPdfModal.file_size)} •{" "}
+                  {viewPdfModal.page_count} pages
+                </p>
+              </div>
+              <button
+                onClick={() => setViewPdfModal(null)}
+                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                <XMarkIcon className="w-6 h-6 text-gray-600" />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-hidden">
+              {viewPdfModal.file_type === "pdf" ? (
+                <iframe
+                  src={apiService.getDocumentFileUrl(viewPdfModal.id)}
+                  className="w-full h-full"
+                  title={viewPdfModal.filename}
+                />
+              ) : (
+                <div className="flex items-center justify-center h-full bg-gray-50">
+                  <div className="text-center">
+                    <DocumentTextIcon className="w-20 h-20 text-gray-400 mx-auto mb-4" />
+                    <p className="text-gray-600 mb-4">
+                      PPTX files cannot be previewed directly.
+                    </p>
+                    <a
+                      href={apiService.getDocumentFileUrl(viewPdfModal.id)}
+                      download={viewPdfModal.filename}
+                      className="inline-flex items-center px-6 py-3 bg-indigo-600 text-white rounded-xl font-medium hover:bg-indigo-700 transition-colors"
+                    >
+                      <ArrowDownTrayIcon className="w-5 h-5 mr-2" />
+                      Download File
+                    </a>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Delete Confirmation Modal */}
       {deleteConfirm && (

@@ -3,8 +3,10 @@ Document API Endpoints
 """
 
 from typing import Optional, Dict, Any
-from fastapi import APIRouter, Depends, UploadFile, File, HTTPException, status
+from fastapi import APIRouter, Depends, UploadFile, File, HTTPException, status, Query
+from fastapi.responses import FileResponse
 import logging
+import os
 
 from app.api.deps import get_document_service, get_ai_service, get_current_user
 from app.schemas.document import (
@@ -88,6 +90,7 @@ async def get_documents(
                     file_size=doc.file_size,
                     page_count=doc.page_count,
                     processing_status=doc.processing_status,
+                    extracted_text=doc.extracted_text,
                     metadata=doc.metadata,
                     created_at=doc.created_at,
                     processed_at=doc.processed_at
@@ -135,6 +138,7 @@ async def get_document(
             file_size=document.file_size,
             page_count=document.page_count,
             processing_status=document.processing_status,
+            extracted_text=document.extracted_text,
             metadata=document.metadata,
             created_at=document.created_at,
             processed_at=document.processed_at
@@ -146,6 +150,63 @@ async def get_document(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to retrieve document: {str(e)}"
+        )
+
+
+@router.get("/{doc_id}/file")
+async def get_document_file(
+    doc_id: str,
+    token: str = Query(...),
+    doc_service: DocumentService = Depends(get_document_service)
+):
+    """
+    Get the actual document file (PDF/PPTX).
+    
+    - **doc_id**: Document ID
+    - **token**: JWT token for authentication
+    """
+    try:
+        # Validate token and get user from the token string
+        from app.core.security import decode_access_token
+        user_data = decode_access_token(token)
+        if not user_data:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid or expired token"
+            )
+        
+        # Get document
+        document = await doc_service.get_document(doc_id, user_data["sub"])
+        if not document:
+            raise HTTPException(status_code=404, detail="Document not found")
+        
+        # Check if file exists
+        if not os.path.exists(document.file_path):
+            raise HTTPException(status_code=404, detail="File not found on server")
+        
+        # Return file with inline disposition for PDF (to view in browser), download for PPTX
+        media_type = "application/pdf" if document.file_type == "pdf" else "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+        
+        headers = {}
+        if document.file_type == "pdf":
+            # For PDF, use inline to display in browser
+            headers["Content-Disposition"] = f'inline; filename="{document.filename}"'
+        else:
+            # For PPTX, use attachment to download
+            headers["Content-Disposition"] = f'attachment; filename="{document.filename}"'
+        
+        return FileResponse(
+            path=document.file_path,
+            media_type=media_type,
+            headers=headers
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Get document file error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to retrieve document file: {str(e)}"
         )
 
 

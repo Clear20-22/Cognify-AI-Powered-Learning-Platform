@@ -510,6 +510,11 @@ class ApiService {
       throw new Error(`Failed to process document: ${error.message}`);
     }
   }
+
+  getDocumentFileUrl(docId) {
+    const token = localStorage.getItem('access_token');
+    return `${this.baseURL}/api/documents/${docId}/file?token=${token}`;
+  }
 }
 
 export const apiService = new ApiService();
