@@ -15,6 +15,7 @@ from app.services.chat_service import ChatService
 from app.services.exam_service import ExamService
 from app.services.note_service import NoteService
 from app.services.pdf_service import PDFService
+from app.services.document_service import DocumentService
 
 settings = get_settings()
 security = HTTPBearer(auto_error=False)
@@ -71,6 +72,13 @@ def get_note_service(
 def get_pdf_service() -> PDFService:
     """Get PDF service instance."""
     return PDFService()
+
+
+def get_document_service(
+    data_store: MongoDataStore = Depends(get_data_store)
+) -> DocumentService:
+    """Get document service instance."""
+    return DocumentService(data_store)
 
 
 async def get_current_user(

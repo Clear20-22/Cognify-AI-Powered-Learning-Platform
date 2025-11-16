@@ -3,6 +3,7 @@ import LandingPage from "./components/LandingPage";
 import ChatPage from "./components/ChatPage";
 import Dashboard from "./components/Dashboard";
 import Notes from "./components/Notes";
+import Documents from "./components/Documents";
 import History from "./components/History";
 import AuthModal from "./components/AuthModal";
 import { AuthProvider, useAuth } from "./hooks/useAuth.jsx";
@@ -68,6 +69,8 @@ function AppContent() {
       {currentPage === "chat" && <ChatPage onNavigate={handleNavigate} />}
 
       {currentPage === "notes" && <Notes onNavigate={handleNavigate} />}
+
+      {currentPage === "documents" && <Documents onNavigate={handleNavigate} />}
 
       {currentPage === "history" && <History onNavigate={handleNavigate} />}
     </div>

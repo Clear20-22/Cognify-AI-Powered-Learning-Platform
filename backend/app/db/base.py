@@ -60,6 +60,7 @@ class MongoDataStore(BaseRepository):
         self.chats = db.chats
         self.exams = db.exams
         self.notes = db.notes
+        self.documents = db.documents
     
     # User methods
     async def add_user(self, user_id: str, user_data: Dict) -> Dict:

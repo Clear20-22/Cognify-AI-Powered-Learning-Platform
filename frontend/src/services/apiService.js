@@ -391,6 +391,125 @@ class ApiService {
       throw new Error(`Failed to delete note: ${error.message}`);
     }
   }
+
+  // Document API methods
+  async uploadDocument(userId, file) {
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const token = localStorage.getItem('access_token');
+      const response = await fetch(`${this.baseURL}/api/documents/upload`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        },
+        body: formData
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      return { success: true, document: data };
+    } catch (error) {
+      console.error('API Error:', error);
+      throw new Error(`Failed to upload document: ${error.message}`);
+    }
+  }
+
+  async getUserDocuments(userId) {
+    try {
+      const token = localStorage.getItem('access_token');
+      const response = await fetch(`${this.baseURL}/api/documents/`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      return { success: true, documents: data.documents, total: data.total };
+    } catch (error) {
+      console.error('API Error:', error);
+      throw new Error(`Failed to get documents: ${error.message}`);
+    }
+  }
+
+  async getDocument(docId) {
+    try {
+      const token = localStorage.getItem('access_token');
+      const response = await fetch(`${this.baseURL}/api/documents/${docId}`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      return { success: true, document: data };
+    } catch (error) {
+      console.error('API Error:', error);
+      throw new Error(`Failed to get document: ${error.message}`);
+    }
+  }
+
+  async deleteDocument(docId) {
+    try {
+      const token = localStorage.getItem('access_token');
+      const response = await fetch(`${this.baseURL}/api/documents/${docId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      return { success: true };
+    } catch (error) {
+      console.error('API Error:', error);
+      throw new Error(`Failed to delete document: ${error.message}`);
+    }
+  }
+
+  async processDocument(docId, action, options = {}) {
+    try {
+      const token = localStorage.getItem('access_token');
+      const response = await fetch(`${this.baseURL}/api/documents/${docId}/process`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ action, options })
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      return { success: data.success, result: data.result, message: data.message };
+    } catch (error) {
+      console.error('API Error:', error);
+      throw new Error(`Failed to process document: ${error.message}`);
+    }
+  }
 }
 
 export const apiService = new ApiService();

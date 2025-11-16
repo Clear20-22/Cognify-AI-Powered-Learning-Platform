@@ -331,3 +331,31 @@ Explanation: [text]"""
             }
             for i in range(min(num_questions, 3))
         ]
+    
+    async def generate_study_notes(self, text: str) -> str:
+        """Generate structured study notes from text content."""
+        prompt = f"""Generate comprehensive study notes from the following content. 
+Structure the notes with:
+- Main topics and subtopics
+- Key concepts and definitions
+- Important points to remember
+- Examples where applicable
+
+Content:
+{text[:3000]}
+
+Format the notes in a clear, organized manner suitable for studying."""
+        
+        return self.generate_response(prompt)
+    
+    async def generate_summary(self, text: str) -> str:
+        """Generate a concise summary of the text content."""
+        prompt = f"""Provide a clear and concise summary of the following content. 
+Highlight the main ideas and key takeaways.
+
+Content:
+{text[:3000]}
+
+Summary:"""
+        
+        return self.generate_response(prompt)

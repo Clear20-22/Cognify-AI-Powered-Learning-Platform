@@ -18,6 +18,13 @@ from app.schemas.exam import (
     ExamSubmitResponse,
     QuestionResponse
 )
+from app.schemas.document import (
+    DocumentUploadResponse,
+    DocumentResponse,
+    DocumentListResponse,
+    DocumentProcessRequest,
+    DocumentProcessResponse
+)
 from app.schemas.note import (
     NoteCreateRequest,
     NoteUpdateRequest,

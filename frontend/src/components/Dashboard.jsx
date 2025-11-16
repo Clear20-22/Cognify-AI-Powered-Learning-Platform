@@ -265,6 +265,13 @@ function Dashboard({ onNavigate }) {
               <span>Notes</span>
             </button>
             <button
+              onClick={() => onNavigate && onNavigate("documents")}
+              className="w-full flex items-center space-x-3 px-4 py-3 hover:bg-gray-100 text-gray-700 rounded-xl font-medium transition-colors"
+            >
+              <BookOpenIcon className="w-5 h-5" />
+              <span>Documents</span>
+            </button>
+            <button
               onClick={() => onNavigate && onNavigate("history")}
               className="w-full flex items-center space-x-3 px-4 py-3 hover:bg-gray-100 text-gray-700 rounded-xl font-medium transition-colors"
             >
@@ -328,7 +335,7 @@ function Dashboard({ onNavigate }) {
             <h2 className="text-2xl font-bold text-gray-800 mb-6">
               Quick Actions
             </h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
               <QuickActionCard
                 icon={PlusIcon}
                 title="Start New Chat"
@@ -342,6 +349,13 @@ function Dashboard({ onNavigate }) {
                 description="Access your saved study materials"
                 color="from-blue-500 to-blue-600"
                 onClick={() => onNavigate && onNavigate("notes")}
+              />
+              <QuickActionCard
+                icon={DocumentTextIcon}
+                title="Upload Documents"
+                description="Upload PDFs and presentations to study"
+                color="from-purple-500 to-purple-600"
+                onClick={() => onNavigate && onNavigate("documents")}
               />
               <QuickActionCard
                 icon={AcademicCapIcon}
