@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import AuthModal from "./AuthModal";
 import { useAuth } from "../hooks/useAuth.jsx";
 import { 
@@ -16,6 +17,7 @@ function LandingPage() {
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [authMode, setAuthMode] = useState('signin');
   const { user, signOut } = useAuth();
+  const navigate = useNavigate();
 
   const openAuth = (mode) => {
     setAuthMode(mode);
@@ -123,7 +125,7 @@ function LandingPage() {
               <div className="flex flex-col sm:flex-row gap-4">
                 {user ? (
                   <button
-                    onClick={() => window.location.href = "/chat"}
+                    onClick={() => navigate("/dashboard")}
                     className="px-8 py-4 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-xl font-bold text-lg hover:from-red-700 hover:to-red-800 transition-all shadow-xl hover:shadow-2xl transform hover:scale-105"
                   >
                     Continue Learning →

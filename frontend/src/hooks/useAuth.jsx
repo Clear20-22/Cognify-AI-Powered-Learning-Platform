@@ -52,16 +52,28 @@ export function AuthProvider({ children }) {
         };
       }
 
+<<<<<<< HEAD
       // Create user object from response
       const userData = {
         id: data.user_id,
         email: data.email,
         full_name: data.full_name,
+=======
+      // Build user object from response
+      const user = {
+        id: data.user_id,
+        email: data.email,
+        name: data.full_name
+>>>>>>> 43647e27cac5a64a34a9246a11f40a66a613e9a3
       };
 
       // Don't store user and token - let them sign in manually
       // This creates the account but doesn't log them in
+<<<<<<< HEAD
       return { user: userData, error: null };
+=======
+      return { user: user, error: null };
+>>>>>>> 43647e27cac5a64a34a9246a11f40a66a613e9a3
     } catch (error) {
       console.error("Error signing up:", error);
       return {
@@ -101,6 +113,7 @@ export function AuthProvider({ children }) {
         };
       }
 
+<<<<<<< HEAD
       // Create user object from response
       const userData = {
         id: data.user_id,
@@ -114,6 +127,21 @@ export function AuthProvider({ children }) {
       localStorage.setItem("access_token", data.access_token);
 
       return { user: userData, error: null };
+=======
+      // Build user object from response
+      const user = {
+        id: data.user_id,
+        email: data.email,
+        name: data.full_name
+      };
+
+      // Store user and token
+      setUser(user);
+      localStorage.setItem("user", JSON.stringify(user));
+      localStorage.setItem("access_token", data.access_token);
+
+      return { user: user, error: null };
+>>>>>>> 43647e27cac5a64a34a9246a11f40a66a613e9a3
     } catch (error) {
       console.error("Error signing in:", error);
       return {
