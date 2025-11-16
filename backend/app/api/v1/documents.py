@@ -4,7 +4,7 @@ Document API Endpoints
 
 from typing import Optional, Dict, Any
 from fastapi import APIRouter, Depends, UploadFile, File, HTTPException, status, Query
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, Response
 import logging
 import os
 
@@ -160,7 +160,7 @@ async def get_document_file(
     doc_service: DocumentService = Depends(get_document_service)
 ):
     """
-    Get the actual document file (PDF/PPTX).
+    Get the actual document file (PDF/PPTX) from GridFS.
     
     - **doc_id**: Document ID
     - **token**: JWT token for authentication
@@ -180,11 +180,12 @@ async def get_document_file(
         if not document:
             raise HTTPException(status_code=404, detail="Document not found")
         
-        # Check if file exists
-        if not os.path.exists(document.file_path):
-            raise HTTPException(status_code=404, detail="File not found on server")
+        # Get file content from GridFS
+        file_content = await doc_service.get_document_file(doc_id, user_data["sub"])
+        if not file_content:
+            raise HTTPException(status_code=404, detail="File not found")
         
-        # Return file with inline disposition for PDF (to view in browser), download for PPTX
+        # Set media type and content disposition
         media_type = "application/pdf" if document.file_type == "pdf" else "application/vnd.openxmlformats-officedocument.presentationml.presentation"
         
         headers = {}
@@ -195,8 +196,8 @@ async def get_document_file(
             # For PPTX, use attachment to download
             headers["Content-Disposition"] = f'attachment; filename="{document.filename}"'
         
-        return FileResponse(
-            path=document.file_path,
+        return Response(
+            content=file_content,
             media_type=media_type,
             headers=headers
         )

@@ -18,6 +18,133 @@ import {
   XMarkIcon,
 } from "@heroicons/react/24/outline";
 
+// Helper function to parse and format AI-generated content
+const parseContent = (text) => {
+  if (!text) return [];
+
+  const sections = [];
+  const lines = text.split("\n");
+  let currentSection = { title: "", content: [], type: "normal" };
+
+  lines.forEach((line, index) => {
+    const trimmedLine = line.trim();
+
+    // Skip lines with only markdown symbols or incomplete formatting
+    if (
+      trimmedLine.match(/^#{3,}$/) ||
+      trimmedLine.match(/^[-*_]{3,}$/) ||
+      trimmedLine.toLowerCase().includes("still have") ||
+      trimmedLine === "---"
+    ) {
+      return;
+    }
+
+    // Check for headers (lines that start with ## or #### or end with :)
+    if (trimmedLine.match(/^#{1,4}\s+(.+)$/)) {
+      // Save previous section if it has content
+      if (currentSection.content.length > 0 || currentSection.title) {
+        sections.push({ ...currentSection });
+      }
+      // Start new section
+      const titleText = trimmedLine.replace(/^#{1,4}\s+/, "").trim();
+      currentSection = {
+        title: titleText,
+        content: [],
+        type: "header",
+        level: (trimmedLine.match(/^#+/) || [""])[0].length,
+      };
+    }
+    // Check for section headers ending with colon
+    else if (
+      trimmedLine.match(/^(.+):$/) &&
+      trimmedLine.length < 60 &&
+      !trimmedLine.match(/^https?:/)
+    ) {
+      // Save previous section if it has content
+      if (currentSection.content.length > 0 || currentSection.title) {
+        sections.push({ ...currentSection });
+      }
+      // Start new section
+      currentSection = {
+        title: trimmedLine.replace(/:$/, "").trim(),
+        content: [],
+        type: "header",
+        level: 2,
+      };
+    }
+    // Check for bullet points
+    else if (
+      trimmedLine.match(/^[-•*]\s+(.+)/) ||
+      trimmedLine.match(/^\d+\.\s+(.+)/)
+    ) {
+      const bulletText = trimmedLine
+        .replace(/^[-•*]\s+/, "")
+        .replace(/^\d+\.\s+/, "")
+        .trim();
+
+      if (bulletText.length > 0) {
+        currentSection.content.push({
+          type: "bullet",
+          text: bulletText,
+        });
+      }
+    }
+    // Check for bold text **text** or important standalone lines
+    else if (
+      trimmedLine.includes("**") ||
+      (trimmedLine.length > 5 &&
+        trimmedLine === trimmedLine.toUpperCase() &&
+        trimmedLine.match(/^[A-Z\s]+$/) &&
+        !trimmedLine.match(/^\d/))
+    ) {
+      currentSection.content.push({
+        type: "bold",
+        text: trimmedLine,
+      });
+    }
+    // Regular text
+    else if (trimmedLine.length > 0) {
+      currentSection.content.push({
+        type: "text",
+        text: trimmedLine,
+      });
+    }
+    // Empty line - create separation (but not multiple in a row)
+    else if (
+      currentSection.content.length > 0 &&
+      currentSection.content[currentSection.content.length - 1]?.type !==
+        "space"
+    ) {
+      currentSection.content.push({ type: "space" });
+    }
+  });
+
+  // Add last section if it has meaningful content
+  if (currentSection.content.length > 0 || currentSection.title) {
+    sections.push(currentSection);
+  }
+
+  // Filter out empty sections
+  return sections.filter(
+    (section) => section.title || section.content.length > 0
+  );
+};
+
+// Helper to render formatted text with bold
+const renderFormattedText = (text) => {
+  const parts = text.split(/(\*\*.*?\*\*)/g);
+  return parts.map((part, i) => {
+    if (part.startsWith("**") && part.endsWith("**")) {
+      return (
+        <strong key={i} className="font-semibold text-gray-900">
+          {part.slice(2, -2)}
+        </strong>
+      );
+    }
+    return <span key={i}>{part}</span>;
+  });
+};
+
 function Documents({ onNavigate }) {
   const { user, signOut } = useAuth();
   const userId = useUserId();
@@ -444,11 +571,28 @@ function Documents({ onNavigate }) {
       {/* Result Modal */}
       {showResultModal && resultData && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 overflow-y-auto">
-          <div className="bg-white rounded-2xl p-8 max-w-4xl w-full shadow-2xl my-8">
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-2xl font-bold text-gray-800">
-                {resultData.title}
-              </h3>
+          <div className="bg-white rounded-2xl p-8 max-w-5xl w-full shadow-2xl my-8 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-6 sticky top-0 bg-white pb-4 border-b border-gray-200">
+              <div className="flex items-center space-x-3">
+                {resultData.action === "generate_notes" && (
+                  <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center">
+                    <ClipboardDocumentListIcon className="w-6 h-6 text-blue-600" />
+                  </div>
+                )}
+                {resultData.action === "summarize" && (
+                  <div className="w-10 h-10 bg-purple-100 rounded-xl flex items-center justify-center">
+                    <SparklesIcon className="w-6 h-6 text-purple-600" />
+                  </div>
+                )}
+                {resultData.action === "generate_quiz" && (
+                  <div className="w-10 h-10 bg-green-100 rounded-xl flex items-center justify-center">
+                    <ChartBarIcon className="w-6 h-6 text-green-600" />
+                  </div>
+                )}
+                <h3 className="text-2xl font-bold text-gray-800">
+                  {resultData.title}
+                </h3>
+              </div>
               <button
                 onClick={() => setShowResultModal(false)}
                 className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
@@ -459,27 +603,175 @@ function Documents({ onNavigate }) {
 
             <div className="prose max-w-none">
               {resultData.action === "generate_notes" &&
-                resultData.content.notes && (
-                  <div className="bg-blue-50 rounded-xl p-6 whitespace-pre-wrap text-gray-800">
-                    {resultData.content.notes}
-                  </div>
-                )}
+                resultData.content.notes &&
+                (() => {
+                  const sections = parseContent(resultData.content.notes);
+                  return (
+                    <div className="space-y-6">
+                      {sections.map((section, idx) => (
+                        <div
+                          key={idx}
+                          className={`rounded-xl p-6 border ${
+                            section.level === 1
+                              ? "bg-gradient-to-br from-blue-100 to-blue-50 border-blue-200"
+                              : section.level === 2
+                              ? "bg-blue-50 border-blue-100"
+                              : "bg-blue-50/50 border-blue-100"
+                          }`}
+                        >
+                          {section.title && (
+                            <h4
+                              className={`font-bold text-blue-900 mb-4 flex items-center ${
+                                section.level === 1
+                                  ? "text-2xl"
+                                  : section.level === 2
+                                  ? "text-xl"
+                                  : "text-lg"
+                              }`}
+                            >
+                              <span
+                                className={`bg-blue-600 rounded-full mr-3 ${
+                                  section.level === 1
+                                    ? "w-1.5 h-8"
+                                    : section.level === 2
+                                    ? "w-1 h-6"
+                                    : "w-0.5 h-5"
+                                }`}
+                              ></span>
+                              {section.title}
+                            </h4>
+                          )}
+                          <div className="space-y-3">
+                            {section.content.map((item, i) => {
+                              if (item.type === "bullet") {
+                                return (
+                                  <div
+                                    key={i}
+                                    className="flex items-start space-x-3"
+                                  >
+                                    <span className="w-2 h-2 bg-blue-600 rounded-full mt-2 shrink-0"></span>
+                                    <p className="text-gray-800 leading-relaxed">
+                                      {renderFormattedText(item.text)}
+                                    </p>
+                                  </div>
+                                );
+                              }
+                              if (
+                                item.type === "bold" ||
+                                item.type === "text"
+                              ) {
+                                return (
+                                  <p
+                                    key={i}
+                                    className="text-gray-800 leading-relaxed"
+                                  >
+                                    {renderFormattedText(item.text)}
+                                  </p>
+                                );
+                              }
+                              if (item.type === "space") {
+                                return <div key={i} className="h-2"></div>;
+                              }
+                              return null;
+                            })}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  );
+                })()}
 
               {resultData.action === "summarize" &&
-                resultData.content.summary && (
-                  <div className="bg-purple-50 rounded-xl p-6 whitespace-pre-wrap text-gray-800">
-                    {resultData.content.summary}
-                  </div>
-                )}
+                resultData.content.summary &&
+                (() => {
+                  const sections = parseContent(resultData.content.summary);
+                  return (
+                    <div className="space-y-6">
+                      {sections.map((section, idx) => (
+                        <div
+                          key={idx}
+                          className={`rounded-xl p-6 border ${
+                            section.level === 1
+                              ? "bg-gradient-to-br from-purple-100 to-purple-50 border-purple-200"
+                              : section.level === 2
+                              ? "bg-purple-50 border-purple-100"
+                              : "bg-purple-50/50 border-purple-100"
+                          }`}
+                        >
+                          {section.title && (
+                            <h4
+                              className={`font-bold text-purple-900 mb-4 flex items-center ${
+                                section.level === 1
+                                  ? "text-2xl"
+                                  : section.level === 2
+                                  ? "text-xl"
+                                  : "text-lg"
+                              }`}
+                            >
+                              <span
+                                className={`bg-purple-600 rounded-full mr-3 ${
+                                  section.level === 1
+                                    ? "w-1.5 h-8"
+                                    : section.level === 2
+                                    ? "w-1 h-6"
+                                    : "w-0.5 h-5"
+                                }`}
+                              ></span>
+                              {section.title}
+                            </h4>
+                          )}
+                          <div className="space-y-3">
+                            {section.content.map((item, i) => {
+                              if (item.type === "bullet") {
+                                return (
+                                  <div
+                                    key={i}
+                                    className="flex items-start space-x-3"
+                                  >
+                                    <span className="w-2 h-2 bg-purple-600 rounded-full mt-2 shrink-0"></span>
+                                    <p className="text-gray-800 leading-relaxed">
+                                      {renderFormattedText(item.text)}
+                                    </p>
+                                  </div>
+                                );
+                              }
+                              if (
+                                item.type === "bold" ||
+                                item.type === "text"
+                              ) {
+                                return (
+                                  <p
+                                    key={i}
+                                    className="text-gray-800 leading-relaxed"
+                                  >
+                                    {renderFormattedText(item.text)}
+                                  </p>
+                                );
+                              }
+                              if (item.type === "space") {
+                                return <div key={i} className="h-2"></div>;
+                              }
+                              return null;
+                            })}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  );
+                })()}
 
               {resultData.action === "generate_quiz" && (
-                <div className="bg-green-50 rounded-xl p-6 text-gray-800">
-                  {resultData.content.message || "Quiz generation coming soon!"}
+                <div className="bg-green-50 rounded-xl p-6 border border-green-100 text-center">
+                  <ChartBarIcon className="w-16 h-16 text-green-600 mx-auto mb-4" />
+                  <p className="text-gray-800 text-lg">
+                    {resultData.content.message ||
+                      "Quiz generation coming soon!"}
+                  </p>
                 </div>
               )}
             </div>
 
-            <div className="flex space-x-3 mt-6">
+            <div className="flex space-x-3 mt-6 pt-4 border-t border-gray-200 sticky bottom-0 bg-white">
               <button
                 onClick={() => {
                   navigator.clipboard.writeText(
@@ -487,9 +779,10 @@ function Documents({ onNavigate }) {
                   );
                   alert("✅ Copied to clipboard!");
                 }}
-                className="flex-1 px-4 py-2.5 border border-gray-300 text-gray-700 rounded-xl font-medium hover:bg-gray-50 transition-colors"
+                className="flex-1 px-4 py-2.5 border border-gray-300 text-gray-700 rounded-xl font-medium hover:bg-gray-50 transition-colors flex items-center justify-center space-x-2"
               >
-                📋 Copy
+                <ClipboardDocumentListIcon className="w-5 h-5" />
+                <span>Copy to Clipboard</span>
               </button>
               <button
                 onClick={() => setShowResultModal(false)}

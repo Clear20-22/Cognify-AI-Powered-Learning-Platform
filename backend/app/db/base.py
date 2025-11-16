@@ -6,6 +6,7 @@ Base repository pattern and data access layer
 from typing import Optional, List, Dict, Any
 from datetime import datetime
 import logging
+from motor.motor_asyncio import AsyncIOMotorGridFSBucket
 
 logger = logging.getLogger(__name__)
 
@@ -61,6 +62,8 @@ class MongoDataStore(BaseRepository):
         self.exams = db.exams
         self.notes = db.notes
         self.documents = db.documents
+        # GridFS for file storage
+        self.fs = AsyncIOMotorGridFSBucket(db)
     
     # User methods
     async def add_user(self, user_id: str, user_data: Dict) -> Dict:
