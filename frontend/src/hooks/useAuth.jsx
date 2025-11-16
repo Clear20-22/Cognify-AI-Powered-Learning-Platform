@@ -31,7 +31,7 @@ export function AuthProvider({ children }) {
     try {
       console.log("Attempting signup to:", `${API_URL}/api/auth/signup`);
       console.log("Signup data:", { email, fullName });
-      
+
       const response = await fetch(`${API_URL}/api/auth/signup`, {
         method: "POST",
         headers: {
@@ -41,20 +41,37 @@ export function AuthProvider({ children }) {
       });
 
       console.log("Signup response status:", response.status);
-      
+
       const data = await response.json();
       console.log("Signup response data:", data);
 
       if (!response.ok) {
-        return { user: null, error: { message: data.detail || "Sign up failed" } };
+        return {
+          user: null,
+          error: { message: data.detail || "Sign up failed" },
+        };
       }
+
+      // Create user object from response
+      const userData = {
+        id: data.user_id,
+        email: data.email,
+        full_name: data.full_name,
+      };
 
       // Don't store user and token - let them sign in manually
       // This creates the account but doesn't log them in
-      return { user: data.user, error: null };
+      return { user: userData, error: null };
     } catch (error) {
       console.error("Error signing up:", error);
-      return { user: null, error: { message: error.message || "Network error. Please check if backend is running." } };
+      return {
+        user: null,
+        error: {
+          message:
+            error.message ||
+            "Network error. Please check if backend is running.",
+        },
+      };
     }
   };
 
@@ -63,7 +80,7 @@ export function AuthProvider({ children }) {
     try {
       console.log("Attempting signin to:", `${API_URL}/api/auth/signin`);
       console.log("Signin data:", { email });
-      
+
       const response = await fetch(`${API_URL}/api/auth/signin`, {
         method: "POST",
         headers: {
@@ -73,23 +90,40 @@ export function AuthProvider({ children }) {
       });
 
       console.log("Signin response status:", response.status);
-      
+
       const data = await response.json();
       console.log("Signin response data:", data);
 
       if (!response.ok) {
-        return { user: null, error: { message: data.detail || "Sign in failed" } };
+        return {
+          user: null,
+          error: { message: data.detail || "Sign in failed" },
+        };
       }
 
+      // Create user object from response
+      const userData = {
+        id: data.user_id,
+        email: data.email,
+        full_name: data.full_name,
+      };
+
       // Store user and token
-      setUser(data.user);
-      localStorage.setItem("user", JSON.stringify(data.user));
+      setUser(userData);
+      localStorage.setItem("user", JSON.stringify(userData));
       localStorage.setItem("access_token", data.access_token);
 
-      return { user: data.user, error: null };
+      return { user: userData, error: null };
     } catch (error) {
       console.error("Error signing in:", error);
-      return { user: null, error: { message: error.message || "Network error. Please check if backend is running." } };
+      return {
+        user: null,
+        error: {
+          message:
+            error.message ||
+            "Network error. Please check if backend is running.",
+        },
+      };
     }
   };
 

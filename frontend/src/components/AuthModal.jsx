@@ -1,28 +1,28 @@
 import React, { useEffect, useState } from "react";
 import { useAuth } from "../hooks/useAuth";
-import { 
-  XMarkIcon, 
-  EnvelopeIcon, 
-  LockClosedIcon, 
+import {
+  XMarkIcon,
+  EnvelopeIcon,
+  LockClosedIcon,
   UserIcon,
   SparklesIcon,
   EyeIcon,
-  EyeSlashIcon
-} from '@heroicons/react/24/outline';
+  EyeSlashIcon,
+} from "@heroicons/react/24/outline";
 
-function AuthModal({ onClose, initialMode = 'signin' }) {
+function AuthModal({ onClose, onSuccess, initialMode = "signin" }) {
   const [mode, setMode] = useState(initialMode); // 'signin' or 'signup'
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [successMessage, setSuccessMessage] = useState(null);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  
+
   const [formData, setFormData] = useState({
-    fullName: '',
-    email: '',
-    password: '',
-    confirmPassword: ''
+    fullName: "",
+    email: "",
+    password: "",
+    confirmPassword: "",
   });
 
   const { signUp, signIn } = useAuth();
@@ -30,81 +30,92 @@ function AuthModal({ onClose, initialMode = 'signin' }) {
   const handleInputChange = (e) => {
     setFormData({
       ...formData,
-      [e.target.name]: e.target.value
+      [e.target.name]: e.target.value,
     });
     setError(null);
   };
 
   const validateForm = () => {
-    if (mode === 'signup') {
+    if (mode === "signup") {
       if (!formData.fullName.trim()) {
-        setError('Please enter your full name');
+        setError("Please enter your full name");
         return false;
       }
       if (formData.password !== formData.confirmPassword) {
-        setError('Passwords do not match');
+        setError("Passwords do not match");
         return false;
       }
       if (formData.password.length < 6) {
-        setError('Password must be at least 6 characters');
+        setError("Password must be at least 6 characters");
         return false;
       }
     }
-    
-    if (!formData.email.trim() || !formData.email.includes('@')) {
-      setError('Please enter a valid email address');
+
+    if (!formData.email.trim() || !formData.email.includes("@")) {
+      setError("Please enter a valid email address");
       return false;
     }
-    
+
     if (!formData.password.trim()) {
-      setError('Please enter a password');
+      setError("Please enter a password");
       return false;
     }
-    
+
     return true;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (!validateForm()) return;
-    
+
     try {
       setLoading(true);
       setError(null);
       setSuccessMessage(null);
 
       let result;
-      if (mode === 'signup') {
-        result = await signUp(formData.email, formData.password, formData.fullName);
-        
+      if (mode === "signup") {
+        result = await signUp(
+          formData.email,
+          formData.password,
+          formData.fullName
+        );
+
         if (result.error) {
           setError(result.error.message);
         } else {
           // Successfully signed up - DON'T auto sign in, show sign in page
-          setSuccessMessage('Account created successfully! Please sign in with your credentials.');
-          setMode('signin');
+          setSuccessMessage(
+            "Account created successfully! Please sign in with your credentials."
+          );
+          setMode("signin");
           // Clear the password fields but keep email
           setFormData({
             ...formData,
-            password: '',
-            confirmPassword: ''
+            password: "",
+            confirmPassword: "",
           });
         }
       } else {
         result = await signIn(formData.email, formData.password);
-        
+
         if (result.error) {
           setError(result.error.message);
         } else {
-          // Successfully signed in - close modal
-          onClose();
+          // Successfully signed in - call onSuccess to navigate to chat page
+          if (onSuccess) {
+            onSuccess();
+          } else if (onClose) {
+            onClose();
+          }
         }
       }
     } catch (err) {
       console.error("Auth error:", err);
       // Show more detailed error message
-      const errorMessage = err.message || "An unexpected error occurred. Please try again.";
+      const errorMessage =
+        err.message || "An unexpected error occurred. Please try again.";
       setError(errorMessage);
     } finally {
       setLoading(false);
@@ -126,14 +137,14 @@ function AuthModal({ onClose, initialMode = 'signin' }) {
   };
 
   const switchMode = () => {
-    setMode(mode === 'signin' ? 'signup' : 'signin');
+    setMode(mode === "signin" ? "signup" : "signin");
     setError(null);
     setSuccessMessage(null);
     setFormData({
-      fullName: '',
-      email: '',
-      password: '',
-      confirmPassword: ''
+      fullName: "",
+      email: "",
+      password: "",
+      confirmPassword: "",
     });
   };
 
@@ -170,14 +181,16 @@ function AuthModal({ onClose, initialMode = 'signin' }) {
                   </div>
                   <h2 className="text-2xl font-bold text-white">Cognify AI</h2>
                 </div>
-                
+
                 <h3 className="text-4xl font-bold text-white mb-6 leading-tight">
-                  {mode === 'signup' ? 'Start Your Learning Journey' : 'Welcome Back!'}
+                  {mode === "signup"
+                    ? "Start Your Learning Journey"
+                    : "Welcome Back!"}
                 </h3>
                 <p className="text-red-100 text-lg mb-8">
-                  {mode === 'signup' 
-                    ? 'Join thousands of students transforming their education with AI-powered learning.'
-                    : 'Continue your personalized learning experience with intelligent study tools.'}
+                  {mode === "signup"
+                    ? "Join thousands of students transforming their education with AI-powered learning."
+                    : "Continue your personalized learning experience with intelligent study tools."}
                 </p>
               </div>
 
@@ -187,32 +200,64 @@ function AuthModal({ onClose, initialMode = 'signin' }) {
                     <SparklesIcon className="w-5 h-5 text-white" />
                   </div>
                   <div>
-                    <h4 className="text-white font-semibold mb-1">AI-Powered Learning</h4>
-                    <p className="text-red-100 text-sm">Personalized content adapted to your pace</p>
+                    <h4 className="text-white font-semibold mb-1">
+                      AI-Powered Learning
+                    </h4>
+                    <p className="text-red-100 text-sm">
+                      Personalized content adapted to your pace
+                    </p>
                   </div>
                 </div>
-                
+
                 <div className="flex items-start space-x-3">
                   <div className="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center flex-shrink-0">
-                    <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    <svg
+                      className="w-5 h-5 text-white"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                      />
                     </svg>
                   </div>
                   <div>
-                    <h4 className="text-white font-semibold mb-1">Track Your Progress</h4>
-                    <p className="text-red-100 text-sm">Detailed analytics and performance insights</p>
+                    <h4 className="text-white font-semibold mb-1">
+                      Track Your Progress
+                    </h4>
+                    <p className="text-red-100 text-sm">
+                      Detailed analytics and performance insights
+                    </p>
                   </div>
                 </div>
-                
+
                 <div className="flex items-start space-x-3">
                   <div className="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center flex-shrink-0">
-                    <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    <svg
+                      className="w-5 h-5 text-white"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                      />
                     </svg>
                   </div>
                   <div>
-                    <h4 className="text-white font-semibold mb-1">24/7 Availability</h4>
-                    <p className="text-red-100 text-sm">Learn anytime, anywhere you want</p>
+                    <h4 className="text-white font-semibold mb-1">
+                      24/7 Availability
+                    </h4>
+                    <p className="text-red-100 text-sm">
+                      Learn anytime, anywhere you want
+                    </p>
                   </div>
                 </div>
               </div>
@@ -242,12 +287,12 @@ function AuthModal({ onClose, initialMode = 'signin' }) {
 
               <div className="mb-8">
                 <h3 className="text-3xl font-bold text-gray-800 mb-2">
-                  {mode === 'signup' ? 'Create Account' : 'Sign In'}
+                  {mode === "signup" ? "Create Account" : "Sign In"}
                 </h3>
                 <p className="text-gray-600">
-                  {mode === 'signup' 
-                    ? 'Fill in your details to get started'
-                    : 'Enter your credentials to continue'}
+                  {mode === "signup"
+                    ? "Fill in your details to get started"
+                    : "Enter your credentials to continue"}
                 </p>
               </div>
 
@@ -259,12 +304,14 @@ function AuthModal({ onClose, initialMode = 'signin' }) {
 
               {successMessage && (
                 <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-xl">
-                  <p className="text-green-600 text-sm font-medium">{successMessage}</p>
+                  <p className="text-green-600 text-sm font-medium">
+                    {successMessage}
+                  </p>
                 </div>
               )}
 
               <form onSubmit={handleSubmit} className="space-y-5">
-                {mode === 'signup' && (
+                {mode === "signup" && (
                   <div>
                     <label className="block text-sm font-semibold text-gray-700 mb-2">
                       Full Name
@@ -328,7 +375,7 @@ function AuthModal({ onClose, initialMode = 'signin' }) {
                   </div>
                 </div>
 
-                {mode === 'signup' && (
+                {mode === "signup" && (
                   <div>
                     <label className="block text-sm font-semibold text-gray-700 mb-2">
                       Confirm Password
@@ -345,7 +392,9 @@ function AuthModal({ onClose, initialMode = 'signin' }) {
                       />
                       <button
                         type="button"
-                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                        onClick={() =>
+                          setShowConfirmPassword(!showConfirmPassword)
+                        }
                         className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
                       >
                         {showConfirmPassword ? (
@@ -365,14 +414,32 @@ function AuthModal({ onClose, initialMode = 'signin' }) {
                 >
                   {loading ? (
                     <span className="flex items-center justify-center">
-                      <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      <svg
+                        className="animate-spin -ml-1 mr-3 h-5 w-5 text-white"
+                        xmlns="http://www.w3.org/2000/svg"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                      >
+                        <circle
+                          className="opacity-25"
+                          cx="12"
+                          cy="12"
+                          r="10"
+                          stroke="currentColor"
+                          strokeWidth="4"
+                        ></circle>
+                        <path
+                          className="opacity-75"
+                          fill="currentColor"
+                          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                        ></path>
                       </svg>
                       Processing...
                     </span>
+                  ) : mode === "signup" ? (
+                    "Create Account"
                   ) : (
-                    mode === 'signup' ? 'Create Account' : 'Sign In'
+                    "Sign In"
                   )}
                 </button>
               </form>
@@ -383,34 +450,54 @@ function AuthModal({ onClose, initialMode = 'signin' }) {
                     <div className="w-full border-t border-gray-300"></div>
                   </div>
                   <div className="relative flex justify-center text-sm">
-                    <span className="px-4 bg-white text-gray-500 font-medium">Or continue with</span>
+                    <span className="px-4 bg-white text-gray-500 font-medium">
+                      Or continue with
+                    </span>
                   </div>
                 </div>
 
                 <div className="mt-6 grid grid-cols-2 gap-4">
                   <button
                     type="button"
-                    onClick={() => handleSocialAuth('google')}
+                    onClick={() => handleSocialAuth("google")}
                     disabled={loading}
                     className="flex items-center justify-center gap-3 px-4 py-3 border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors disabled:opacity-50"
                   >
                     <svg className="w-5 h-5" viewBox="0 0 24 24">
-                      <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                      <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                      <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-                      <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                      <path
+                        fill="#4285F4"
+                        d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+                      />
+                      <path
+                        fill="#34A853"
+                        d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                      />
+                      <path
+                        fill="#FBBC05"
+                        d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
+                      />
+                      <path
+                        fill="#EA4335"
+                        d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
+                      />
                     </svg>
-                    <span className="text-sm font-medium text-gray-700">Google</span>
+                    <span className="text-sm font-medium text-gray-700">
+                      Google
+                    </span>
                   </button>
 
                   <button
                     type="button"
-                    onClick={() => handleSocialAuth('github')}
+                    onClick={() => handleSocialAuth("github")}
                     disabled={loading}
                     className="flex items-center justify-center gap-3 px-4 py-3 bg-gray-900 text-white rounded-xl hover:bg-gray-800 transition-colors disabled:opacity-50"
                   >
-                    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                      <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+                    <svg
+                      className="w-5 h-5"
+                      fill="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z" />
                     </svg>
                     <span className="text-sm font-medium">GitHub</span>
                   </button>
@@ -419,13 +506,15 @@ function AuthModal({ onClose, initialMode = 'signin' }) {
 
               <div className="mt-8 text-center">
                 <p className="text-gray-600">
-                  {mode === 'signup' ? 'Already have an account?' : "Don't have an account?"}{' '}
+                  {mode === "signup"
+                    ? "Already have an account?"
+                    : "Don't have an account?"}{" "}
                   <button
                     type="button"
                     onClick={switchMode}
                     className="text-red-600 hover:text-red-700 font-semibold hover:underline"
                   >
-                    {mode === 'signup' ? 'Sign In' : 'Sign Up'}
+                    {mode === "signup" ? "Sign In" : "Sign Up"}
                   </button>
                 </p>
               </div>

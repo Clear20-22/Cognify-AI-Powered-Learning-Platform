@@ -1,21 +1,22 @@
-import React, { useState } from 'react';
-import LandingPage from './components/LandingPage';
-import ChatPage from './components/ChatPage';
-import AuthModal from './components/AuthModal';
-import { AuthProvider, useAuth } from './hooks/useAuth.jsx';
-import './index.css';
+import React, { useState } from "react";
+import LandingPage from "./components/LandingPage";
+import ChatPage from "./components/ChatPage";
+import AuthModal from "./components/AuthModal";
+import { AuthProvider, useAuth } from "./hooks/useAuth.jsx";
+import "./index.css";
 
 function AppContent() {
-  const [currentPage, setCurrentPage] = useState('landing');
-  const [showAuthModal, setShowAuthModal] = useState(false);
   const { user, loading, signInAnonymously } = useAuth();
+  const [showAuthModal, setShowAuthModal] = useState(false);
+
+  // If user is authenticated, show chat page; otherwise show landing page
+  const currentPage = user ? "chat" : "landing";
 
   const handleGetStarted = async () => {
     if (!user && !loading) {
       // Sign in anonymously for demo
       await signInAnonymously();
     }
-    setCurrentPage('chat');
   };
 
   const handleSignIn = () => {
@@ -24,7 +25,7 @@ function AppContent() {
 
   const handleAuthSuccess = () => {
     setShowAuthModal(false);
-    setCurrentPage('chat');
+    // No need to manually set page - it will automatically show chat when user is set
   };
 
   if (loading) {
@@ -40,17 +41,14 @@ function AppContent() {
 
   return (
     <div className="App">
-      {currentPage === 'landing' ? (
-        <LandingPage 
-          onGetStarted={handleGetStarted}
-          onSignIn={handleSignIn}
-        />
+      {currentPage === "landing" ? (
+        <LandingPage onGetStarted={handleGetStarted} onSignIn={handleSignIn} />
       ) : (
         <ChatPage />
       )}
-      
+
       {showAuthModal && (
-        <AuthModal 
+        <AuthModal
           onClose={() => setShowAuthModal(false)}
           onSuccess={handleAuthSuccess}
         />
