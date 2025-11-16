@@ -116,6 +116,7 @@ class DocumentService:
     async def _process_document(self, doc_id: str, gridfs_id):
         """
         Process document to extract text (background task).
+        Optimized for large files with streaming and proper file type detection.
         
         Args:
             doc_id: Document ID
@@ -129,49 +130,99 @@ class DocumentService:
                 {"$set": {"processing_status": "processing"}}
             )
             
-            # Download file from GridFS to temp location for processing
+            # Get document info to determine file type
+            doc_info = await self.db.documents.find_one({"id": doc_id})
+            if not doc_info:
+                raise Exception(f"Document {doc_id} not found")
+            
+            file_type = doc_info.get('file_type', 'pdf')
+            file_suffix = f".{file_type}"
+            
+            print(f"Processing document {doc_id}: {doc_info.get('filename')}")
+            print(f"File type: {file_type}, Size: {doc_info.get('file_size', 0)} bytes")
+            
+            # Download file from GridFS with streaming for large files
             grid_out = await self.fs.open_download_stream(gridfs_id)
-            file_content = await grid_out.read()
             
-            # Create temporary file
-            with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as temp_file:
-                temp_file.write(file_content)
+            # Create temporary file with correct extension
+            with tempfile.NamedTemporaryFile(delete=False, suffix=file_suffix) as temp_file:
+                # Stream file in chunks to handle large files
+                chunk_size = 1024 * 1024  # 1MB chunks
+                total_written = 0
+                
+                while True:
+                    chunk = await grid_out.read(chunk_size)
+                    if not chunk:
+                        break
+                    temp_file.write(chunk)
+                    total_written += len(chunk)
+                
                 temp_file_path = temp_file.name
+                print(f"Downloaded {total_written} bytes to {temp_file_path}")
             
-            # Extract text
-            extracted_text = extract_text_from_document(temp_file_path, purngre=50)
+            # Extract text with progress reporting every 20 pages/slides
+            print(f"Starting text extraction...")
+            extracted_text = extract_text_from_document(temp_file_path, purngre=20)
             
             # Count pages/slides (rough estimate from extracted text)
             page_count = len(extracted_text.split("---")) if "---" in extracted_text else None
+            
+            print(f"Extraction complete!")
+            print(f"Total characters extracted: {len(extracted_text)}")
+            print(f"Estimated pages/slides: {page_count}")
+            
+            # Store more text for large documents (500k chars = ~250 pages)
+            stored_text = extracted_text[:500000] if len(extracted_text) > 500000 else extracted_text
+            
+            if len(extracted_text) > 500000:
+                print(f"Warning: Text truncated from {len(extracted_text)} to 500000 chars for storage")
             
             # Update document with extracted text
             await self.db.documents.update_one(
                 {"id": doc_id},
                 {
                     "$set": {
-                        "extracted_text": extracted_text[:100000],  # Limit to 100k chars for storage
+                        "extracted_text": stored_text,
                         "page_count": page_count,
                         "processing_status": "completed",
-                        "processed_at": datetime.now()
+                        "processed_at": datetime.now(),
+                        "metadata.extraction_stats": {
+                            "total_chars": len(extracted_text),
+                            "stored_chars": len(stored_text),
+                            "truncated": len(extracted_text) > 500000
+                        }
                     }
                 }
             )
             
         except Exception as e:
-            # Mark as failed
+            error_msg = str(e)
+            print(f"\n❌ Error processing document {doc_id}: {error_msg}")
+            print(f"Error type: {type(e).__name__}")
+            
+            import traceback
+            traceback.print_exc()
+            
+            # Mark as failed with detailed error info
             await self.db.documents.update_one(
                 {"id": doc_id},
                 {
                     "$set": {
                         "processing_status": "failed",
-                        "metadata.error": str(e)
+                        "metadata.error": error_msg,
+                        "metadata.error_type": type(e).__name__,
+                        "processed_at": datetime.now()
                     }
                 }
             )
         finally:
             # Clean up temporary file
             if temp_file_path and os.path.exists(temp_file_path):
-                os.unlink(temp_file_path)
+                try:
+                    os.unlink(temp_file_path)
+                    print(f"Cleaned up temp file: {temp_file_path}")
+                except Exception as cleanup_error:
+                    print(f"Warning: Could not delete temp file {temp_file_path}: {cleanup_error}")
             raise
     
     async def get_user_documents(self, user_id: str) -> List[Document]:
