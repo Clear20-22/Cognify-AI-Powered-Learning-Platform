@@ -49,9 +49,16 @@ export function AuthProvider({ children }) {
         return { user: null, error: { message: data.detail || "Sign up failed" } };
       }
 
+      // Build user object from response
+      const user = {
+        id: data.user_id,
+        email: data.email,
+        name: data.full_name
+      };
+
       // Don't store user and token - let them sign in manually
       // This creates the account but doesn't log them in
-      return { user: data.user, error: null };
+      return { user: user, error: null };
     } catch (error) {
       console.error("Error signing up:", error);
       return { user: null, error: { message: error.message || "Network error. Please check if backend is running." } };
@@ -81,12 +88,19 @@ export function AuthProvider({ children }) {
         return { user: null, error: { message: data.detail || "Sign in failed" } };
       }
 
+      // Build user object from response
+      const user = {
+        id: data.user_id,
+        email: data.email,
+        name: data.full_name
+      };
+
       // Store user and token
-      setUser(data.user);
-      localStorage.setItem("user", JSON.stringify(data.user));
+      setUser(user);
+      localStorage.setItem("user", JSON.stringify(user));
       localStorage.setItem("access_token", data.access_token);
 
-      return { user: data.user, error: null };
+      return { user: user, error: null };
     } catch (error) {
       console.error("Error signing in:", error);
       return { user: null, error: { message: error.message || "Network error. Please check if backend is running." } };

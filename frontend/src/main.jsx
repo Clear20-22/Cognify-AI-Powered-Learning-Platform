@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client'
 import { RouterProvider, createBrowserRouter } from 'react-router-dom'
 import './index.css'
 import LandingPage from './components/LandingPage'
+import Dashboard from './components/Dashboard'
 import ChatPage from './components/ChatPage'
 import History from './components/History'
 import Notes from './components/Notes'
@@ -12,6 +13,10 @@ const router = createBrowserRouter([
   {
     path: "/",
     element: <LandingPage />,
+  },
+  {
+    path: "/dashboard",
+    element: <Dashboard />,
   },
   {
     path: "/chat",
