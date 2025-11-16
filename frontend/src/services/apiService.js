@@ -4,7 +4,7 @@ class ApiService {
     this.baseURL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
   }
 
-  async sendMessage(message, context = null) {
+  async sendMessage(message, userId, context = null) {
     try {
       const response = await fetch(`${this.baseURL}/api/chat`, {
         method: 'POST',
@@ -13,7 +13,7 @@ class ApiService {
         },
         body: JSON.stringify({
           message,
-          user_id: 'user_123', // You can make this dynamic based on logged in user
+          user_id: userId,
           context: context
         })
       });
@@ -333,7 +333,7 @@ class ApiService {
 
   async getUserNotes(userId, limit = 100) {
     try {
-      const response = await fetch(`${this.baseURL}/api/users/${userId}/notes?limit=${limit}`, {
+      const response = await fetch(`${this.baseURL}/api/notes/users/${userId}/notes?limit=${limit}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json'

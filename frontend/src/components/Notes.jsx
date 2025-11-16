@@ -1,21 +1,19 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useAuth, useUserId } from '../hooks/useAuth';
-import { apiService } from '../services/apiService';
-import Avatar from './Avatar';
+import React, { useState, useEffect } from "react";
+import { useAuth, useUserId } from "../hooks/useAuth";
+import { apiService } from "../services/apiService";
+import Avatar from "./Avatar";
 
-function Notes() {
+function Notes({ onNavigate }) {
   const [notes, setNotes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedNote, setSelectedNote] = useState(null);
   const [editingNoteId, setEditingNoteId] = useState(null);
-  const [editContent, setEditContent] = useState('');
-  const [searchQuery, setSearchQuery] = useState('');
+  const [editContent, setEditContent] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
   const [deleteConfirm, setDeleteConfirm] = useState(null);
 
   const userId = useUserId();
   const { user, signOut } = useAuth();
-  const navigate = useNavigate();
 
   useEffect(() => {
     loadNotes();
@@ -29,7 +27,7 @@ function Notes() {
         setNotes(result.notes);
       }
     } catch (error) {
-      console.error('Failed to load notes:', error);
+      console.error("Failed to load notes:", error);
     } finally {
       setLoading(false);
     }
@@ -37,7 +35,9 @@ function Notes() {
 
   const handleSignOut = async () => {
     await signOut();
-    navigate('/');
+    if (onNavigate) {
+      onNavigate("landing");
+    }
   };
 
   const startEdit = (note) => {
@@ -47,21 +47,23 @@ function Notes() {
 
   const cancelEdit = () => {
     setEditingNoteId(null);
-    setEditContent('');
+    setEditContent("");
   };
 
   const saveEdit = async (noteId) => {
     try {
-      const result = await apiService.updateNote(noteId, { content: editContent });
+      const result = await apiService.updateNote(noteId, {
+        content: editContent,
+      });
       if (result.success) {
         // Update local state
-        setNotes(notes.map(n => n.id === noteId ? result.note : n));
+        setNotes(notes.map((n) => (n.id === noteId ? result.note : n)));
         setEditingNoteId(null);
-        setEditContent('');
+        setEditContent("");
       }
     } catch (error) {
-      console.error('Failed to update note:', error);
-      alert('❌ Failed to update note. Please try again.');
+      console.error("Failed to update note:", error);
+      alert("❌ Failed to update note. Please try again.");
     }
   };
 
@@ -70,15 +72,15 @@ function Notes() {
       const result = await apiService.deleteNote(noteId);
       if (result.success) {
         // Remove from local state
-        setNotes(notes.filter(n => n.id !== noteId));
+        setNotes(notes.filter((n) => n.id !== noteId));
         setDeleteConfirm(null);
         if (selectedNote?.id === noteId) {
           setSelectedNote(null);
         }
       }
     } catch (error) {
-      console.error('Failed to delete note:', error);
-      alert('❌ Failed to delete note. Please try again.');
+      console.error("Failed to delete note:", error);
+      alert("❌ Failed to delete note. Please try again.");
     }
   };
 
@@ -90,19 +92,19 @@ function Notes() {
     const diffHours = Math.floor(diffMs / 3600000);
     const diffDays = Math.floor(diffMs / 86400000);
 
-    if (diffMins < 1) return 'Just now';
+    if (diffMins < 1) return "Just now";
     if (diffMins < 60) return `${diffMins}m ago`;
     if (diffHours < 24) return `${diffHours}h ago`;
     if (diffDays < 7) return `${diffDays}d ago`;
-    
-    return date.toLocaleDateString('en-US', { 
-      month: 'short', 
-      day: 'numeric',
-      year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined
+
+    return date.toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: date.getFullYear() !== now.getFullYear() ? "numeric" : undefined,
     });
   };
 
-  const filteredNotes = notes.filter(note => 
+  const filteredNotes = notes.filter((note) =>
     note.content.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
@@ -119,20 +121,18 @@ function Notes() {
               </h1>
               <nav className="flex gap-1">
                 <button
-                  onClick={() => navigate('/dashboard')}
+                  onClick={() => onNavigate && onNavigate("dashboard")}
                   className="px-4 py-2 text-gray-600 hover:text-red-600 rounded-lg hover:bg-red-50 transition-colors"
                 >
                   Dashboard
                 </button>
                 <button
-                  onClick={() => navigate('/chat')}
+                  onClick={() => onNavigate && onNavigate("chat")}
                   className="px-4 py-2 text-gray-600 hover:text-red-600 rounded-lg hover:bg-red-50 transition-colors"
                 >
                   AI Chat
                 </button>
-                <button
-                  className="px-4 py-2 text-red-600 bg-red-50 rounded-lg font-medium"
-                >
+                <button className="px-4 py-2 text-red-600 bg-red-50 rounded-lg font-medium">
                   My Notes
                 </button>
               </nav>
@@ -140,9 +140,11 @@ function Notes() {
 
             {/* User Menu */}
             <div className="flex items-center gap-4">
-              <Avatar name={user?.name || user?.email || 'User'} size="sm" />
+              <Avatar name={user?.name || user?.email || "User"} size="sm" />
               <div className="text-right">
-                <p className="text-sm font-medium text-gray-900">{user?.name || 'Student'}</p>
+                <p className="text-sm font-medium text-gray-900">
+                  {user?.name || "Student"}
+                </p>
                 <button
                   onClick={handleSignOut}
                   className="text-xs text-gray-500 hover:text-red-600 transition-colors"
@@ -159,8 +161,12 @@ function Notes() {
       <div className="max-w-7xl mx-auto px-6 py-8">
         {/* Page Header */}
         <div className="mb-8">
-          <h2 className="text-3xl font-bold text-gray-900 mb-2">My Saved Notes</h2>
-          <p className="text-gray-600">Important AI responses you've saved for later review</p>
+          <h2 className="text-3xl font-bold text-gray-900 mb-2">
+            My Saved Notes
+          </h2>
+          <p className="text-gray-600">
+            Important AI responses you've saved for later review
+          </p>
         </div>
 
         {/* Search Bar */}
@@ -213,16 +219,16 @@ function Notes() {
               />
             </svg>
             <h3 className="text-xl font-semibold text-gray-900 mb-2">
-              {searchQuery ? 'No notes found' : 'No saved notes yet'}
+              {searchQuery ? "No notes found" : "No saved notes yet"}
             </h3>
             <p className="text-gray-600 mb-6">
               {searchQuery
-                ? 'Try a different search term'
-                : 'Start saving important AI responses by clicking the bookmark icon'}
+                ? "Try a different search term"
+                : "Start saving important AI responses by clicking the bookmark icon"}
             </p>
             {!searchQuery && (
               <button
-                onClick={() => navigate('/chat')}
+                onClick={() => onNavigate && onNavigate("chat")}
                 className="px-6 py-3 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-xl font-medium hover:from-red-700 hover:to-red-800 transition-all shadow-lg hover:shadow-xl"
               >
                 Go to AI Chat
@@ -272,8 +278,18 @@ function Notes() {
                         <span>{formatDate(note.created_at)}</span>
                         {note.chat_id && (
                           <span className="flex items-center gap-1">
-                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" />
+                            <svg
+                              className="w-3 h-3"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z"
+                              />
                             </svg>
                             From chat
                           </span>
@@ -292,8 +308,18 @@ function Notes() {
                         className="px-3 py-2 text-sm text-gray-700 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                         title="Edit"
                       >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                        <svg
+                          className="w-4 h-4"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                          />
                         </svg>
                       </button>
                       <button
@@ -301,8 +327,18 @@ function Notes() {
                         className="px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                         title="Delete"
                       >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        <svg
+                          className="w-4 h-4"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                          />
                         </svg>
                       </button>
                     </div>
@@ -325,26 +361,50 @@ function Notes() {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="p-6 border-b border-gray-200 flex items-center justify-between">
-              <h3 className="text-lg font-semibold text-gray-900">Saved Note</h3>
+              <h3 className="text-lg font-semibold text-gray-900">
+                Saved Note
+              </h3>
               <button
                 onClick={() => setSelectedNote(null)}
                 className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
               >
-                <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                <svg
+                  className="w-5 h-5 text-gray-500"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
                 </svg>
               </button>
             </div>
             <div className="p-6 overflow-y-auto max-h-96">
-              <p className="text-gray-800 leading-relaxed whitespace-pre-wrap">{selectedNote.content}</p>
+              <p className="text-gray-800 leading-relaxed whitespace-pre-wrap">
+                {selectedNote.content}
+              </p>
             </div>
             <div className="p-6 border-t border-gray-200 bg-gray-50">
               <div className="flex items-center justify-between text-sm text-gray-600">
                 <span>Saved {formatDate(selectedNote.created_at)}</span>
                 {selectedNote.chat_id && (
                   <span className="flex items-center gap-1">
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" />
+                    <svg
+                      className="w-4 h-4"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z"
+                      />
                     </svg>
                     Linked to chat
                   </span>
@@ -367,13 +427,27 @@ function Notes() {
           >
             <div className="flex items-center gap-4 mb-4">
               <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
-                <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                <svg
+                  className="w-6 h-6 text-red-600"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                  />
                 </svg>
               </div>
               <div>
-                <h3 className="text-lg font-semibold text-gray-900">Delete Note?</h3>
-                <p className="text-sm text-gray-600">This action cannot be undone.</p>
+                <h3 className="text-lg font-semibold text-gray-900">
+                  Delete Note?
+                </h3>
+                <p className="text-sm text-gray-600">
+                  This action cannot be undone.
+                </p>
               </div>
             </div>
             <div className="flex gap-3">

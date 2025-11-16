@@ -1,7 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../hooks/useAuth.jsx';
-import Avatar from './Avatar';
+import React, { useState, useEffect } from "react";
+import { useAuth } from "../hooks/useAuth.jsx";
+import Avatar from "./Avatar";
 import {
   SparklesIcon,
   ChatBubbleLeftRightIcon,
@@ -18,11 +17,10 @@ import {
   Bars3Icon,
   XMarkIcon,
   PlusIcon,
-} from '@heroicons/react/24/outline';
+} from "@heroicons/react/24/outline";
 
-function Dashboard() {
+function Dashboard({ onNavigate }) {
   const { user, signOut } = useAuth();
-  const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [stats, setStats] = useState({
     totalChats: 0,
@@ -36,28 +34,28 @@ function Dashboard() {
   const [recentActivity, setRecentActivity] = useState([
     {
       id: 1,
-      type: 'chat',
-      title: 'Machine Learning Basics',
-      time: '2 hours ago',
+      type: "chat",
+      title: "Machine Learning Basics",
+      time: "2 hours ago",
       icon: ChatBubbleLeftRightIcon,
-      color: 'from-blue-500 to-blue-600'
+      color: "from-blue-500 to-blue-600",
     },
     {
       id: 2,
-      type: 'exam',
-      title: 'Data Structures Quiz',
-      time: '5 hours ago',
+      type: "exam",
+      title: "Data Structures Quiz",
+      time: "5 hours ago",
       score: 85,
       icon: AcademicCapIcon,
-      color: 'from-green-500 to-green-600'
+      color: "from-green-500 to-green-600",
     },
     {
       id: 3,
-      type: 'note',
-      title: 'Python Functions',
-      time: '1 day ago',
+      type: "note",
+      title: "Python Functions",
+      time: "1 day ago",
       icon: DocumentTextIcon,
-      color: 'from-purple-500 to-purple-600'
+      color: "from-purple-500 to-purple-600",
     },
   ]);
 
@@ -82,7 +80,9 @@ function Dashboard() {
 
   const handleSignOut = async () => {
     await signOut();
-    navigate('/');
+    if (onNavigate) {
+      onNavigate("landing");
+    }
   };
 
   const StatCard = ({ icon: Icon, label, value, color, trend }) => (
@@ -98,19 +98,29 @@ function Dashboard() {
             </div>
           )}
         </div>
-        <div className={`w-12 h-12 bg-gradient-to-br ${color} rounded-xl flex items-center justify-center shadow-lg`}>
+        <div
+          className={`w-12 h-12 bg-gradient-to-br ${color} rounded-xl flex items-center justify-center shadow-lg`}
+        >
           <Icon className="w-6 h-6 text-white" />
         </div>
       </div>
     </div>
   );
 
-  const QuickActionCard = ({ icon: Icon, title, description, color, onClick }) => (
+  const QuickActionCard = ({
+    icon: Icon,
+    title,
+    description,
+    color,
+    onClick,
+  }) => (
     <button
       onClick={onClick}
       className="bg-white rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all transform hover:-translate-y-1 border border-gray-100 text-left w-full group"
     >
-      <div className={`w-14 h-14 bg-gradient-to-br ${color} rounded-xl flex items-center justify-center mb-4 shadow-lg group-hover:scale-110 transition-transform`}>
+      <div
+        className={`w-14 h-14 bg-gradient-to-br ${color} rounded-xl flex items-center justify-center mb-4 shadow-lg group-hover:scale-110 transition-transform`}
+      >
         <Icon className="w-7 h-7 text-white" />
       </div>
       <h3 className="text-lg font-bold text-gray-800 mb-2">{title}</h3>
@@ -126,11 +136,15 @@ function Dashboard() {
     const Icon = activity.icon;
     return (
       <div className="flex items-center space-x-4 p-4 hover:bg-gray-50 rounded-xl transition-colors cursor-pointer">
-        <div className={`w-10 h-10 bg-gradient-to-br ${activity.color} rounded-lg flex items-center justify-center flex-shrink-0`}>
+        <div
+          className={`w-10 h-10 bg-gradient-to-br ${activity.color} rounded-lg flex items-center justify-center flex-shrink-0`}
+        >
           <Icon className="w-5 h-5 text-white" />
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-semibold text-gray-800 truncate">{activity.title}</p>
+          <p className="text-sm font-semibold text-gray-800 truncate">
+            {activity.title}
+          </p>
           <p className="text-xs text-gray-500">{activity.time}</p>
         </div>
         {activity.score && (
@@ -158,7 +172,7 @@ function Dashboard() {
               >
                 <Bars3Icon className="w-6 h-6 text-gray-700" />
               </button>
-              
+
               <div className="flex items-center space-x-3">
                 <div className="w-10 h-10 bg-gradient-to-br from-red-600 to-red-800 rounded-xl flex items-center justify-center shadow-lg">
                   <SparklesIcon className="w-6 h-6 text-white" />
@@ -174,12 +188,16 @@ function Dashboard() {
               <div className="flex items-center space-x-3">
                 <Avatar
                   src={null}
-                  alt={user?.name || 'User'}
+                  alt={user?.name || "User"}
                   size="w-10 h-10"
-                  fallbackText={(user?.name || user?.email?.split('@')[0] || 'U')[0].toUpperCase()}
+                  fallbackText={(user?.name ||
+                    user?.email?.split("@")[0] ||
+                    "U")[0].toUpperCase()}
                 />
                 <div className="hidden sm:block">
-                  <p className="text-sm font-semibold text-gray-800">{user?.name || user?.email?.split('@')[0]}</p>
+                  <p className="text-sm font-semibold text-gray-800">
+                    {user?.name || user?.email?.split("@")[0]}
+                  </p>
                   <p className="text-xs text-gray-500">Student</p>
                 </div>
               </div>
@@ -205,7 +223,7 @@ function Dashboard() {
       {/* Sidebar */}
       <aside
         className={`fixed top-0 left-0 h-full w-64 bg-white shadow-xl z-50 transform transition-transform lg:translate-x-0 ${
-          sidebarOpen ? 'translate-x-0' : '-translate-x-full'
+          sidebarOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
         <div className="p-6">
@@ -226,28 +244,28 @@ function Dashboard() {
 
           <nav className="space-y-2">
             <button
-              onClick={() => navigate('/dashboard')}
+              onClick={() => onNavigate && onNavigate("dashboard")}
               className="w-full flex items-center space-x-3 px-4 py-3 bg-red-50 text-red-600 rounded-xl font-medium"
             >
               <ChartBarIcon className="w-5 h-5" />
               <span>Dashboard</span>
             </button>
             <button
-              onClick={() => navigate('/chat')}
+              onClick={() => onNavigate && onNavigate("chat")}
               className="w-full flex items-center space-x-3 px-4 py-3 hover:bg-gray-100 text-gray-700 rounded-xl font-medium transition-colors"
             >
               <ChatBubbleLeftRightIcon className="w-5 h-5" />
               <span>Chat</span>
             </button>
             <button
-              onClick={() => navigate('/notes')}
+              onClick={() => onNavigate && onNavigate("notes")}
               className="w-full flex items-center space-x-3 px-4 py-3 hover:bg-gray-100 text-gray-700 rounded-xl font-medium transition-colors"
             >
               <DocumentTextIcon className="w-5 h-5" />
               <span>Notes</span>
             </button>
             <button
-              onClick={() => navigate('/history')}
+              onClick={() => onNavigate && onNavigate("history")}
               className="w-full flex items-center space-x-3 px-4 py-3 hover:bg-gray-100 text-gray-700 rounded-xl font-medium transition-colors"
             >
               <ClockIcon className="w-5 h-5" />
@@ -263,9 +281,15 @@ function Dashboard() {
           {/* Welcome Header */}
           <div className="mb-8">
             <h1 className="text-4xl font-bold text-gray-800 mb-2">
-              Welcome back, {user?.name?.split(' ')[0] || user?.email?.split('@')[0] || 'Student'}! 👋
+              Welcome back,{" "}
+              {user?.name?.split(" ")[0] ||
+                user?.email?.split("@")[0] ||
+                "Student"}
+              ! 👋
             </h1>
-            <p className="text-gray-600 text-lg">Here's what's happening with your learning today</p>
+            <p className="text-gray-600 text-lg">
+              Here's what's happening with your learning today
+            </p>
           </div>
 
           {/* Stats Grid */}
@@ -301,28 +325,30 @@ function Dashboard() {
 
           {/* Quick Actions */}
           <div className="mb-8">
-            <h2 className="text-2xl font-bold text-gray-800 mb-6">Quick Actions</h2>
+            <h2 className="text-2xl font-bold text-gray-800 mb-6">
+              Quick Actions
+            </h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
               <QuickActionCard
                 icon={PlusIcon}
                 title="Start New Chat"
                 description="Begin a new learning conversation with AI"
                 color="from-red-500 to-red-600"
-                onClick={() => navigate('/chat')}
+                onClick={() => onNavigate && onNavigate("chat")}
               />
               <QuickActionCard
                 icon={BookOpenIcon}
                 title="Review Notes"
                 description="Access your saved study materials"
                 color="from-blue-500 to-blue-600"
-                onClick={() => navigate('/notes')}
+                onClick={() => onNavigate && onNavigate("notes")}
               />
               <QuickActionCard
                 icon={AcademicCapIcon}
                 title="Take Practice Test"
                 description="Test your knowledge with AI-generated exams"
                 color="from-green-500 to-green-600"
-                onClick={() => navigate('/chat')}
+                onClick={() => onNavigate && onNavigate("chat")}
               />
             </div>
           </div>
@@ -333,9 +359,11 @@ function Dashboard() {
             <div className="lg:col-span-2">
               <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100">
                 <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-xl font-bold text-gray-800">Recent Activity</h2>
+                  <h2 className="text-xl font-bold text-gray-800">
+                    Recent Activity
+                  </h2>
                   <button
-                    onClick={() => navigate('/history')}
+                    onClick={() => onNavigate && onNavigate("history")}
                     className="text-sm text-red-600 hover:text-red-700 font-semibold"
                   >
                     View All
@@ -364,12 +392,16 @@ function Dashboard() {
                       <span className="font-semibold">15h / 20h</span>
                     </div>
                     <div className="w-full bg-red-900/50 rounded-full h-3">
-                      <div className="bg-white h-3 rounded-full" style={{ width: '75%' }}></div>
+                      <div
+                        className="bg-white h-3 rounded-full"
+                        style={{ width: "75%" }}
+                      ></div>
                     </div>
                   </div>
                   <div className="pt-4 border-t border-red-500/30">
                     <p className="text-red-100 text-sm">
-                      🎯 You're doing great! Keep up the momentum to reach your weekly goal.
+                      🎯 You're doing great! Keep up the momentum to reach your
+                      weekly goal.
                     </p>
                   </div>
                 </div>
@@ -384,7 +416,9 @@ function Dashboard() {
                   <h3 className="text-lg font-bold text-gray-800">Study Tip</h3>
                 </div>
                 <p className="text-gray-600 text-sm leading-relaxed">
-                  💡 Take regular breaks using the Pomodoro technique: 25 minutes of focused study followed by a 5-minute break helps improve retention and prevents burnout.
+                  💡 Take regular breaks using the Pomodoro technique: 25
+                  minutes of focused study followed by a 5-minute break helps
+                  improve retention and prevents burnout.
                 </p>
               </div>
 
@@ -392,7 +426,9 @@ function Dashboard() {
               <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100">
                 <div className="flex items-center space-x-3 mb-4">
                   <TrophyIcon className="w-6 h-6 text-yellow-500" />
-                  <h3 className="text-lg font-bold text-gray-800">Achievements</h3>
+                  <h3 className="text-lg font-bold text-gray-800">
+                    Achievements
+                  </h3>
                 </div>
                 <div className="space-y-3">
                   <div className="flex items-center space-x-3">
@@ -400,8 +436,12 @@ function Dashboard() {
                       <span className="text-2xl">🔥</span>
                     </div>
                     <div>
-                      <p className="text-sm font-semibold text-gray-800">7-Day Streak</p>
-                      <p className="text-xs text-gray-500">Keep learning daily!</p>
+                      <p className="text-sm font-semibold text-gray-800">
+                        7-Day Streak
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        Keep learning daily!
+                      </p>
                     </div>
                   </div>
                   <div className="flex items-center space-x-3">
@@ -409,8 +449,12 @@ function Dashboard() {
                       <span className="text-2xl">📚</span>
                     </div>
                     <div>
-                      <p className="text-sm font-semibold text-gray-800">Knowledge Seeker</p>
-                      <p className="text-xs text-gray-500">10+ study sessions</p>
+                      <p className="text-sm font-semibold text-gray-800">
+                        Knowledge Seeker
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        10+ study sessions
+                      </p>
                     </div>
                   </div>
                 </div>

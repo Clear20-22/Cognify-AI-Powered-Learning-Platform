@@ -1,41 +1,10 @@
-import { StrictMode } from 'react'
-import { createRoot } from 'react-dom/client'
-import { RouterProvider, createBrowserRouter } from 'react-router-dom'
-import './index.css'
-import LandingPage from './components/LandingPage'
-import Dashboard from './components/Dashboard'
-import ChatPage from './components/ChatPage'
-import History from './components/History'
-import Notes from './components/Notes'
-import { AuthProvider } from './hooks/useAuth'
+import { StrictMode } from "react";
+import { createRoot } from "react-dom/client";
+import "./index.css";
+import App from "./App";
 
-const router = createBrowserRouter([
-  {
-    path: "/",
-    element: <LandingPage />,
-  },
-  {
-    path: "/dashboard",
-    element: <Dashboard />,
-  },
-  {
-    path: "/chat",
-    element: <ChatPage />,
-  },
-  {
-    path: "/history",
-    element: <History />,
-  },
-  {
-    path: "/notes",
-    element: <Notes />,
-  }
-]);
-
-createRoot(document.getElementById('root')).render(
+createRoot(document.getElementById("root")).render(
   <StrictMode>
-    <AuthProvider>
-      <RouterProvider router={router} />
-    </AuthProvider>
-  </StrictMode>,
-)
+    <App />
+  </StrictMode>
+);

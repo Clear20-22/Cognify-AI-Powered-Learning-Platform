@@ -1,6 +1,9 @@
 import React, { useState } from "react";
 import LandingPage from "./components/LandingPage";
 import ChatPage from "./components/ChatPage";
+import Dashboard from "./components/Dashboard";
+import Notes from "./components/Notes";
+import History from "./components/History";
 import AuthModal from "./components/AuthModal";
 import { AuthProvider, useAuth } from "./hooks/useAuth.jsx";
 import "./index.css";
@@ -8,15 +11,14 @@ import "./index.css";
 function AppContent() {
   const { user, loading, signInAnonymously } = useAuth();
   const [showAuthModal, setShowAuthModal] = useState(false);
-
-  // If user is authenticated, show chat page; otherwise show landing page
-  const currentPage = user ? "chat" : "landing";
+  const [currentPage, setCurrentPage] = useState("landing");
 
   const handleGetStarted = async () => {
     if (!user && !loading) {
       // Sign in anonymously for demo
       await signInAnonymously();
     }
+    setCurrentPage("dashboard");
   };
 
   const handleSignIn = () => {
@@ -25,8 +27,19 @@ function AppContent() {
 
   const handleAuthSuccess = () => {
     setShowAuthModal(false);
-    // No need to manually set page - it will automatically show chat when user is set
+    setCurrentPage("dashboard");
   };
+
+  const handleNavigate = (page) => {
+    setCurrentPage(page);
+  };
+
+  // Automatically redirect to dashboard when user logs in
+  React.useEffect(() => {
+    if (user && currentPage === "landing") {
+      setCurrentPage("dashboard");
+    }
+  }, [user, currentPage]);
 
   if (loading) {
     return (
@@ -41,18 +54,22 @@ function AppContent() {
 
   return (
     <div className="App">
-      {currentPage === "landing" ? (
-        <LandingPage onGetStarted={handleGetStarted} onSignIn={handleSignIn} />
-      ) : (
-        <ChatPage />
-      )}
-
-      {showAuthModal && (
-        <AuthModal
-          onClose={() => setShowAuthModal(false)}
-          onSuccess={handleAuthSuccess}
+      {currentPage === "landing" && (
+        <LandingPage
+          onGetStarted={handleGetStarted}
+          showAuthModal={showAuthModal}
+          setShowAuthModal={setShowAuthModal}
+          onAuthSuccess={handleAuthSuccess}
         />
       )}
+
+      {currentPage === "dashboard" && <Dashboard onNavigate={handleNavigate} />}
+
+      {currentPage === "chat" && <ChatPage onNavigate={handleNavigate} />}
+
+      {currentPage === "notes" && <Notes onNavigate={handleNavigate} />}
+
+      {currentPage === "history" && <History onNavigate={handleNavigate} />}
     </div>
   );
 }

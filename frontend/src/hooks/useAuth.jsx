@@ -1,7 +1,7 @@
 import { useState, useEffect, createContext, useContext } from "react";
 
 const AuthContext = createContext({});
-const API_URL = "http://localhost:8000";
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
@@ -29,9 +29,6 @@ export function AuthProvider({ children }) {
   // Sign up with email and password
   const signUp = async (email, password, fullName) => {
     try {
-      console.log("Attempting signup to:", `${API_URL}/api/auth/signup`);
-      console.log("Signup data:", { email, fullName });
-
       const response = await fetch(`${API_URL}/api/auth/signup`, {
         method: "POST",
         headers: {
@@ -40,10 +37,7 @@ export function AuthProvider({ children }) {
         body: JSON.stringify({ email, password, fullName }),
       });
 
-      console.log("Signup response status:", response.status);
-
       const data = await response.json();
-      console.log("Signup response data:", data);
 
       if (!response.ok) {
         return {
@@ -56,7 +50,7 @@ export function AuthProvider({ children }) {
       const userData = {
         id: data.user_id,
         email: data.email,
-        full_name: data.full_name,
+        name: data.full_name,
       };
 
       // Don't store user and token - let them sign in manually
@@ -78,9 +72,6 @@ export function AuthProvider({ children }) {
   // Sign in with email and password
   const signIn = async (email, password) => {
     try {
-      console.log("Attempting signin to:", `${API_URL}/api/auth/signin`);
-      console.log("Signin data:", { email });
-
       const response = await fetch(`${API_URL}/api/auth/signin`, {
         method: "POST",
         headers: {
@@ -89,10 +80,7 @@ export function AuthProvider({ children }) {
         body: JSON.stringify({ email, password }),
       });
 
-      console.log("Signin response status:", response.status);
-
       const data = await response.json();
-      console.log("Signin response data:", data);
 
       if (!response.ok) {
         return {
@@ -105,7 +93,7 @@ export function AuthProvider({ children }) {
       const userData = {
         id: data.user_id,
         email: data.email,
-        full_name: data.full_name,
+        name: data.full_name,
       };
 
       // Store user and token
@@ -146,12 +134,36 @@ export function AuthProvider({ children }) {
     return token ? { Authorization: `Bearer ${token}` } : {};
   };
 
+  // Sign in anonymously for demo mode
+  const signInAnonymously = async () => {
+    try {
+      const demoUser = {
+        id: "demo-" + Date.now(),
+        email: "demo@cognify.ai",
+        name: "Demo User",
+      };
+
+      setUser(demoUser);
+      localStorage.setItem("user", JSON.stringify(demoUser));
+      localStorage.setItem("access_token", "demo-token");
+
+      return { user: demoUser, error: null };
+    } catch (error) {
+      console.error("Error in demo sign in:", error);
+      return {
+        user: null,
+        error: { message: "Demo sign in failed" },
+      };
+    }
+  };
+
   const value = {
     user,
     loading,
     signUp,
     signIn,
     signOut,
+    signInAnonymously,
     getAuthHeader,
   };
 
