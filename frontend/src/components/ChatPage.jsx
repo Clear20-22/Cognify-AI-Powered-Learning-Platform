@@ -4,6 +4,133 @@ import { apiService } from "../services/apiService";
 import { useUserId, useAuth } from "../hooks/useAuth.jsx";
 import Avatar from "./Avatar";
 
+// Helper function to parse and format AI-generated content
+const parseContent = (text) => {
+  if (!text) return [];
+
+  const sections = [];
+  const lines = text.split("\n");
+  let currentSection = { title: "", content: [], type: "normal" };
+
+  lines.forEach((line, index) => {
+    const trimmedLine = line.trim();
+
+    // Skip lines with only markdown symbols or incomplete formatting
+    if (
+      trimmedLine.match(/^#{3,}$/) ||
+      trimmedLine.match(/^[-*_]{3,}$/) ||
+      trimmedLine.toLowerCase().includes("still have") ||
+      trimmedLine === "---"
+    ) {
+      return;
+    }
+
+    // Check for headers (lines that start with ## or #### or end with :)
+    if (trimmedLine.match(/^#{1,4}\s+(.+)$/)) {
+      // Save previous section if it has content
+      if (currentSection.content.length > 0 || currentSection.title) {
+        sections.push({ ...currentSection });
+      }
+      // Start new section
+      const titleText = trimmedLine.replace(/^#{1,4}\s+/, "").trim();
+      currentSection = {
+        title: titleText,
+        content: [],
+        type: "header",
+        level: (trimmedLine.match(/^#+/) || [""])[0].length,
+      };
+    }
+    // Check for section headers ending with colon
+    else if (
+      trimmedLine.match(/^(.+):$/) &&
+      trimmedLine.length < 60 &&
+      !trimmedLine.match(/^https?:/)
+    ) {
+      // Save previous section if it has content
+      if (currentSection.content.length > 0 || currentSection.title) {
+        sections.push({ ...currentSection });
+      }
+      // Start new section
+      currentSection = {
+        title: trimmedLine.replace(/:$/, "").trim(),
+        content: [],
+        type: "header",
+        level: 2,
+      };
+    }
+    // Check for bullet points
+    else if (
+      trimmedLine.match(/^[-•*]\s+(.+)/) ||
+      trimmedLine.match(/^\d+\.\s+(.+)/)
+    ) {
+      const bulletText = trimmedLine
+        .replace(/^[-•*]\s+/, "")
+        .replace(/^\d+\.\s+/, "")
+        .trim();
+
+      if (bulletText.length > 0) {
+        currentSection.content.push({
+          type: "bullet",
+          text: bulletText,
+        });
+      }
+    }
+    // Check for bold text **text** or important standalone lines
+    else if (
+      trimmedLine.includes("**") ||
+      (trimmedLine.length > 5 &&
+        trimmedLine === trimmedLine.toUpperCase() &&
+        trimmedLine.match(/^[A-Z\s]+$/) &&
+        !trimmedLine.match(/^\d/))
+    ) {
+      currentSection.content.push({
+        type: "bold",
+        text: trimmedLine,
+      });
+    }
+    // Regular text
+    else if (trimmedLine.length > 0) {
+      currentSection.content.push({
+        type: "text",
+        text: trimmedLine,
+      });
+    }
+    // Empty line - create separation (but not multiple in a row)
+    else if (
+      currentSection.content.length > 0 &&
+      currentSection.content[currentSection.content.length - 1]?.type !==
+        "space"
+    ) {
+      currentSection.content.push({ type: "space" });
+    }
+  });
+
+  // Add last section if it has meaningful content
+  if (currentSection.content.length > 0 || currentSection.title) {
+    sections.push(currentSection);
+  }
+
+  // Filter out empty sections
+  return sections.filter(
+    (section) => section.title || section.content.length > 0
+  );
+};
+
+// Helper to render formatted text with bold
+const renderFormattedText = (text) => {
+  const parts = text.split(/(\*\*.*?\*\*)/g);
+  return parts.map((part, i) => {
+    if (part.startsWith("**") && part.endsWith("**")) {
+      return (
+        <strong key={i} className="font-semibold text-gray-900">
+          {part.slice(2, -2)}
+        </strong>
+      );
+    }
+    return <span key={i}>{part}</span>;
+  });
+};
+
 function ChatPage({ onNavigate }) {
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -861,7 +988,73 @@ function ChatPage({ onNavigate }) {
                             : "bg-gray-100 text-gray-900"
                         }`}
                       >
-                        <p className="text-sm leading-relaxed">{text}</p>
+                        {from === "ai" ? (
+                          // Formatted AI response with sections
+                          <div className="text-sm leading-relaxed space-y-4">
+                            {parseContent(text).map((section, sIdx) => (
+                              <div key={sIdx} className="space-y-2.5">
+                                {section.title && (
+                                  <div>
+                                    <h3
+                                      className={`font-bold ${
+                                        section.level === 1
+                                          ? "text-lg text-red-700 mb-3 pb-2 border-b-2 border-red-200"
+                                          : section.level === 2
+                                          ? "text-base text-red-600 mb-2"
+                                          : "text-sm text-gray-800 mb-1.5"
+                                      }`}
+                                    >
+                                      {section.title}
+                                    </h3>
+                                  </div>
+                                )}
+                                <div className="space-y-2">
+                                  {section.content.map((item, iIdx) => {
+                                    if (item.type === "bullet") {
+                                      return (
+                                        <div
+                                          key={iIdx}
+                                          className="flex gap-3 items-start pl-1"
+                                        >
+                                          <span className="text-red-500 mt-1.5 text-sm font-bold">
+                                            •
+                                          </span>
+                                          <span className="flex-1 text-gray-800 leading-relaxed">
+                                            {renderFormattedText(item.text)}
+                                          </span>
+                                        </div>
+                                      );
+                                    }
+                                    if (item.type === "bold") {
+                                      return (
+                                        <p
+                                          key={iIdx}
+                                          className="font-bold text-gray-900 text-[15px]"
+                                        >
+                                          {renderFormattedText(item.text)}
+                                        </p>
+                                      );
+                                    }
+                                    if (item.type === "space") {
+                                      return <div key={iIdx} className="h-3" />;
+                                    }
+                                    return (
+                                      <p
+                                        key={iIdx}
+                                        className="text-gray-800 leading-relaxed"
+                                      >
+                                        {renderFormattedText(item.text)}
+                                      </p>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          // Simple user message
+                          <p className="text-sm leading-relaxed">{text}</p>
+                        )}
                       </div>
 
                       {/* Action buttons */}

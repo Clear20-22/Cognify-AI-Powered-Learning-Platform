@@ -45,6 +45,9 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# Suppress bcrypt version warning (known harmless issue with passlib)
+logging.getLogger('passlib').setLevel(logging.ERROR)
+
 settings = get_settings()
 
 # ============================================================================
