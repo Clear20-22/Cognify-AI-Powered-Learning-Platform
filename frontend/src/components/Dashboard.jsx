@@ -22,6 +22,7 @@ import {
 function Dashboard({ onNavigate }) {
   const { user, signOut } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [stats, setStats] = useState({
     totalChats: 0,
     totalNotes: 0,
@@ -185,28 +186,157 @@ function Dashboard({ onNavigate }) {
 
             {/* Right - User Menu */}
             <div className="flex items-center space-x-4">
-              <div className="flex items-center space-x-3">
-                <Avatar
-                  src={null}
-                  alt={user?.name || "User"}
-                  size="w-10 h-10"
-                  fallbackText={(user?.name ||
-                    user?.email?.split("@")[0] ||
-                    "U")[0].toUpperCase()}
-                />
-                <div className="hidden sm:block">
-                  <p className="text-sm font-semibold text-gray-800">
-                    {user?.name || user?.email?.split("@")[0]}
-                  </p>
-                  <p className="text-xs text-gray-500">Student</p>
-                </div>
+              <div className="relative">
+                <button
+                  onClick={() => setUserMenuOpen(!userMenuOpen)}
+                  className="flex items-center space-x-3 hover:bg-gray-50 rounded-xl p-2 transition-colors"
+                >
+                  <Avatar
+                    src={null}
+                    alt={user?.name || "User"}
+                    size="w-10 h-10"
+                    fallbackText={(user?.name ||
+                      user?.email?.split("@")[0] ||
+                      "U")[0].toUpperCase()}
+                  />
+                  <div className="hidden sm:block text-left">
+                    <p className="text-sm font-semibold text-gray-800">
+                      {user?.name || user?.email?.split("@")[0]}
+                    </p>
+                    <p className="text-xs text-gray-500">Student</p>
+                  </div>
+                </button>
+
+                {/* User Dropdown Menu */}
+                {userMenuOpen && (
+                  <>
+                    <div
+                      className="fixed inset-0 z-10"
+                      onClick={() => setUserMenuOpen(false)}
+                    ></div>
+                    <div className="absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-2xl border border-gray-200 z-20 overflow-hidden">
+                      {/* User Info Header */}
+                      <div className="bg-gradient-to-r from-red-600 to-red-800 p-6 text-white">
+                        <div className="flex items-center space-x-4">
+                          <Avatar
+                            src={null}
+                            alt={user?.name || "User"}
+                            size="w-16 h-16"
+                            fallbackText={(user?.name ||
+                              user?.email?.split("@")[0] ||
+                              "U")[0].toUpperCase()}
+                          />
+                          <div>
+                            <h3 className="font-bold text-lg">
+                              {user?.name || "Student"}
+                            </h3>
+                            <p className="text-red-100 text-sm">
+                              {user?.email}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* User Stats */}
+                      <div className="p-4 bg-gray-50 border-b border-gray-200">
+                        <div className="grid grid-cols-3 gap-3 text-center">
+                          <div>
+                            <p className="text-2xl font-bold text-gray-800">
+                              {stats.studyStreak}
+                            </p>
+                            <p className="text-xs text-gray-600">Day Streak</p>
+                          </div>
+                          <div>
+                            <p className="text-2xl font-bold text-gray-800">
+                              {stats.totalChats}
+                            </p>
+                            <p className="text-xs text-gray-600">Chats</p>
+                          </div>
+                          <div>
+                            <p className="text-2xl font-bold text-gray-800">
+                              {stats.averageScore}%
+                            </p>
+                            <p className="text-xs text-gray-600">Avg Score</p>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* User Details */}
+                      <div className="p-4 space-y-3">
+                        <div className="flex items-center space-x-3 text-sm">
+                          <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
+                            <span className="text-blue-600">📧</span>
+                          </div>
+                          <div className="flex-1">
+                            <p className="text-xs text-gray-500">Email</p>
+                            <p className="font-medium text-gray-800 truncate">
+                              {user?.email}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center space-x-3 text-sm">
+                          <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
+                            <span className="text-purple-600">👤</span>
+                          </div>
+                          <div className="flex-1">
+                            <p className="text-xs text-gray-500">Role</p>
+                            <p className="font-medium text-gray-800">Student</p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center space-x-3 text-sm">
+                          <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
+                            <span className="text-green-600">📅</span>
+                          </div>
+                          <div className="flex-1">
+                            <p className="text-xs text-gray-500">Member Since</p>
+                            <p className="font-medium text-gray-800">
+                              November 2025
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center space-x-3 text-sm">
+                          <div className="w-8 h-8 bg-orange-100 rounded-lg flex items-center justify-center">
+                            <span className="text-orange-600">⏱️</span>
+                          </div>
+                          <div className="flex-1">
+                            <p className="text-xs text-gray-500">Study Time</p>
+                            <p className="font-medium text-gray-800">
+                              {stats.hoursStudied} hours
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Actions */}
+                      <div className="p-4 bg-gray-50 border-t border-gray-200 space-y-2">
+                        <button
+                          onClick={() => {
+                            setUserMenuOpen(false);
+                            // Could navigate to settings page
+                          }}
+                          className="w-full px-4 py-2 text-sm text-gray-700 hover:bg-white rounded-lg transition-colors text-left flex items-center space-x-2"
+                        >
+                          <span>⚙️</span>
+                          <span>Account Settings</span>
+                        </button>
+                        <button
+                          onClick={() => {
+                            setUserMenuOpen(false);
+                            handleSignOut();
+                          }}
+                          className="w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg transition-colors text-left flex items-center space-x-2 font-medium"
+                        >
+                          <span>🚪</span>
+                          <span>Sign Out</span>
+                        </button>
+                      </div>
+                    </div>
+                  </>
+                )}
               </div>
-              <button
-                onClick={handleSignOut}
-                className="px-4 py-2 text-sm text-gray-700 hover:text-red-600 font-medium transition-colors border border-gray-300 hover:border-red-600 rounded-xl"
-              >
-                Sign Out
-              </button>
             </div>
           </div>
         </div>
@@ -232,7 +362,7 @@ function Dashboard({ onNavigate }) {
               <div className="w-10 h-10 bg-gradient-to-br from-red-600 to-red-800 rounded-xl flex items-center justify-center">
                 <SparklesIcon className="w-6 h-6 text-white" />
               </div>
-              <span className="text-xl font-bold text-gray-800">Cognify</span>
+              <span className="text-xl font-bold text-red-800">Cognify AI</span>
             </div>
             <button
               onClick={() => setSidebarOpen(false)}
