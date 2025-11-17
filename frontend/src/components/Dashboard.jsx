@@ -229,10 +229,10 @@ function Dashboard({ onNavigate }) {
                 {userMenuOpen && (
                   <>
                     <div
-                      className="fixed inset-0 z-10"
+                      className="fixed inset-0 z-40"
                       onClick={() => setUserMenuOpen(false)}
                     ></div>
-                    <div className="absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-2xl border border-gray-200 z-20 overflow-hidden max-h-[80vh] overflow-y-auto">
+                    <div className="absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-2xl border border-gray-200 z-50 overflow-hidden max-h-[80vh] overflow-y-auto">
                       {/* User Info Header */}
                       <div className="bg-gradient-to-r from-red-600 to-red-800 p-6 text-white">
                         <div className="flex items-center space-x-4">
@@ -338,7 +338,7 @@ function Dashboard({ onNavigate }) {
                           className="w-full px-4 py-2 text-sm text-gray-700 hover:bg-white rounded-lg transition-colors text-left flex items-center space-x-2"
                         >
                           <span>⚙️</span>
-                          <span>Account Settings</span>
+                          <span>View Details</span>
                         </button>
                         <button
                           onClick={() => {
