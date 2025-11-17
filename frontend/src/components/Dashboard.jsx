@@ -23,6 +23,12 @@ function Dashboard({ onNavigate }) {
   const { user, signOut } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
+  const [editMode, setEditMode] = useState(false);
+  const [editedUser, setEditedUser] = useState({
+    name: "",
+    email: "",
+  });
   const [stats, setStats] = useState({
     totalChats: 0,
     totalNotes: 0,
@@ -76,6 +82,10 @@ function Dashboard({ onNavigate }) {
 
     if (user) {
       loadStats();
+      setEditedUser({
+        name: user.name || "",
+        email: user.email || "",
+      });
     }
   }, [user]);
 
@@ -84,6 +94,14 @@ function Dashboard({ onNavigate }) {
     if (onNavigate) {
       onNavigate("landing");
     }
+  };
+
+  const handleSaveProfile = () => {
+    // TODO: Call API to update user profile
+    console.log("Saving profile:", editedUser);
+    setEditMode(false);
+    // Show success message
+    alert("Profile updated successfully!");
   };
 
   const StatCard = ({ icon: Icon, label, value, color, trend }) => (
@@ -214,7 +232,7 @@ function Dashboard({ onNavigate }) {
                       className="fixed inset-0 z-10"
                       onClick={() => setUserMenuOpen(false)}
                     ></div>
-                    <div className="absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-2xl border border-gray-200 z-20 overflow-hidden">
+                    <div className="absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-2xl border border-gray-200 z-20 overflow-hidden max-h-[80vh] overflow-y-auto">
                       {/* User Info Header */}
                       <div className="bg-gradient-to-r from-red-600 to-red-800 p-6 text-white">
                         <div className="flex items-center space-x-4">
@@ -315,7 +333,7 @@ function Dashboard({ onNavigate }) {
                         <button
                           onClick={() => {
                             setUserMenuOpen(false);
-                            // Could navigate to settings page
+                            setShowSettings(true);
                           }}
                           className="w-full px-4 py-2 text-sm text-gray-700 hover:bg-white rounded-lg transition-colors text-left flex items-center space-x-2"
                         >
@@ -341,6 +359,220 @@ function Dashboard({ onNavigate }) {
           </div>
         </div>
       </nav>
+
+      {/* Account Settings Modal */}
+      {showSettings && (
+        <div 
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+          onClick={() => {
+            setShowSettings(false);
+            setEditMode(false);
+          }}
+        >
+          <div 
+            className="bg-white rounded-3xl max-w-2xl w-full shadow-2xl overflow-hidden max-h-[90vh] flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="bg-gradient-to-r from-red-600 to-red-800 p-6 text-white">
+              <div className="flex items-center justify-between">
+                <h2 className="text-2xl font-bold">Account Settings</h2>
+                <button
+                  onClick={() => {
+                    setShowSettings(false);
+                    setEditMode(false);
+                  }}
+                  className="p-2 hover:bg-white/20 rounded-lg transition-colors"
+                >
+                  <XMarkIcon className="w-6 h-6" />
+                </button>
+              </div>
+            </div>
+
+            {/* Content */}
+            <div className="p-8 space-y-6 overflow-y-auto">
+              {/* Profile Picture Section */}
+              <div className="flex items-center space-x-6 pb-6 border-b border-gray-200">
+                <Avatar
+                  src={null}
+                  alt={user?.name || "User"}
+                  size="w-24 h-24"
+                  fallbackText={(user?.name ||
+                    user?.email?.split("@")[0] ||
+                    "U")[0].toUpperCase()}
+                />
+                <div className="flex-1">
+                  <h3 className="text-lg font-bold text-gray-800 mb-1">
+                    Profile Picture
+                  </h3>
+                  <p className="text-sm text-gray-600 mb-3">
+                    Update your avatar to personalize your account
+                  </p>
+                  <button className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm font-medium transition-colors">
+                    Change Avatar
+                  </button>
+                </div>
+              </div>
+
+              {/* Personal Information */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-bold text-gray-800">
+                    Personal Information
+                  </h3>
+                  {!editMode ? (
+                    <button
+                      onClick={() => setEditMode(true)}
+                      className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-medium transition-colors"
+                    >
+                      Edit Profile
+                    </button>
+                  ) : (
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => {
+                          setEditMode(false);
+                          setEditedUser({
+                            name: user?.name || "",
+                            email: user?.email || "",
+                          });
+                        }}
+                        className="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg text-sm font-medium transition-colors"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        onClick={handleSaveProfile}
+                        className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium transition-colors"
+                      >
+                        Save Changes
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {/* Full Name */}
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Full Name
+                  </label>
+                  {editMode ? (
+                    <input
+                      type="text"
+                      value={editedUser.name}
+                      onChange={(e) =>
+                        setEditedUser({ ...editedUser, name: e.target.value })
+                      }
+                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all outline-none"
+                      placeholder="Enter your full name"
+                    />
+                  ) : (
+                    <div className="px-4 py-3 bg-gray-50 rounded-xl text-gray-800">
+                      {user?.name || "Not set"}
+                    </div>
+                  )}
+                </div>
+
+                {/* Email */}
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Email Address
+                  </label>
+                  {editMode ? (
+                    <input
+                      type="email"
+                      value={editedUser.email}
+                      onChange={(e) =>
+                        setEditedUser({ ...editedUser, email: e.target.value })
+                      }
+                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all outline-none"
+                      placeholder="Enter your email"
+                    />
+                  ) : (
+                    <div className="px-4 py-3 bg-gray-50 rounded-xl text-gray-800">
+                      {user?.email || "Not set"}
+                    </div>
+                  )}
+                </div>
+
+                {/* Role */}
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Account Type
+                  </label>
+                  <div className="px-4 py-3 bg-gray-50 rounded-xl text-gray-800">
+                    Student Account
+                  </div>
+                </div>
+
+                {/* Member Since */}
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Member Since
+                  </label>
+                  <div className="px-4 py-3 bg-gray-50 rounded-xl text-gray-800">
+                    November 2025
+                  </div>
+                </div>
+              </div>
+
+              {/* Stats Section */}
+              <div className="pt-6 border-t border-gray-200">
+                <h3 className="text-lg font-bold text-gray-800 mb-4">
+                  Your Statistics
+                </h3>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-4 rounded-xl">
+                    <p className="text-2xl font-bold text-blue-700">
+                      {stats.studyStreak}
+                    </p>
+                    <p className="text-xs text-blue-600 font-medium">
+                      Day Streak
+                    </p>
+                  </div>
+                  <div className="bg-gradient-to-br from-green-50 to-green-100 p-4 rounded-xl">
+                    <p className="text-2xl font-bold text-green-700">
+                      {stats.totalChats}
+                    </p>
+                    <p className="text-xs text-green-600 font-medium">
+                      Total Chats
+                    </p>
+                  </div>
+                  <div className="bg-gradient-to-br from-purple-50 to-purple-100 p-4 rounded-xl">
+                    <p className="text-2xl font-bold text-purple-700">
+                      {stats.totalNotes}
+                    </p>
+                    <p className="text-xs text-purple-600 font-medium">
+                      Saved Notes
+                    </p>
+                  </div>
+                  <div className="bg-gradient-to-br from-orange-50 to-orange-100 p-4 rounded-xl">
+                    <p className="text-2xl font-bold text-orange-700">
+                      {stats.hoursStudied}h
+                    </p>
+                    <p className="text-xs text-orange-600 font-medium">
+                      Study Time
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Danger Zone */}
+              <div className="pt-6 border-t border-gray-200">
+                <h3 className="text-lg font-bold text-red-600 mb-2">
+                  Danger Zone
+                </h3>
+                <p className="text-sm text-gray-600 mb-4">
+                  Permanently delete your account and all associated data
+                </p>
+                <button className="px-4 py-2 bg-red-100 hover:bg-red-200 text-red-700 rounded-lg text-sm font-medium transition-colors">
+                  Delete Account
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Mobile Sidebar Overlay */}
       {sidebarOpen && (
