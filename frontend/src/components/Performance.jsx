@@ -17,12 +17,13 @@ import {
   SparklesIcon,
   HomeIcon,
   XMarkIcon,
+  Bars3Icon,
 } from "@heroicons/react/24/outline";
 
 function Performance({ onNavigate }) {
   const { user, signOut } = useAuth();
   const userId = useUserId();
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
   const [loading, setLoading] = useState(true);
   const [performanceData, setPerformanceData] = useState({
     overview: {
@@ -183,94 +184,7 @@ function Performance({ onNavigate }) {
   );
 
   return (
-    <div className="flex h-screen bg-gray-50">
-      {/* Sidebar */}
-      <div
-        className={`fixed inset-y-0 left-0 z-50 w-64 bg-white border-r border-gray-200 transform transition-transform duration-200 ease-in-out ${
-          sidebarOpen ? "translate-x-0" : "-translate-x-full"
-        } lg:translate-x-0 lg:static lg:inset-0`}
-      >
-        <div className="flex flex-col h-full">
-          {/* Logo */}
-          <div className="p-6 border-b border-gray-200">
-            <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 bg-gradient-to-br from-red-600 to-red-800 rounded-xl flex items-center justify-center">
-                <SparklesIcon className="w-6 h-6 text-white" />
-              </div>
-              <h1 className="text-2xl font-bold bg-gradient-to-r from-red-600 to-red-800 bg-clip-text text-transparent">
-                Cognify AI
-              </h1>
-            </div>
-          </div>
-
-          {/* Navigation */}
-          <nav className="flex-1 p-4 space-y-2">
-            <button
-              onClick={() => onNavigate && onNavigate("dashboard")}
-              className="w-full flex items-center space-x-3 px-4 py-3 text-gray-700 rounded-xl hover:bg-red-50 hover:text-red-600 transition-colors"
-            >
-              <HomeIcon className="w-5 h-5" />
-              <span>Dashboard</span>
-            </button>
-
-            <button
-              onClick={() => onNavigate && onNavigate("chat")}
-              className="w-full flex items-center space-x-3 px-4 py-3 text-gray-700 rounded-xl hover:bg-red-50 hover:text-red-600 transition-colors"
-            >
-              <ChatBubbleLeftRightIcon className="w-5 h-5" />
-              <span>AI Chat</span>
-            </button>
-
-            <button
-              onClick={() => onNavigate && onNavigate("notes")}
-              className="w-full flex items-center space-x-3 px-4 py-3 text-gray-700 rounded-xl hover:bg-red-50 hover:text-red-600 transition-colors"
-            >
-              <DocumentTextIcon className="w-5 h-5" />
-              <span>Notes</span>
-            </button>
-
-            <button
-              onClick={() => onNavigate && onNavigate("documents")}
-              className="w-full flex items-center space-x-3 px-4 py-3 text-gray-700 rounded-xl hover:bg-red-50 hover:text-red-600 transition-colors"
-            >
-              <BookOpenIcon className="w-5 h-5" />
-              <span>Documents</span>
-            </button>
-
-            <button
-              className="w-full flex items-center space-x-3 px-4 py-3 text-red-600 bg-red-50 rounded-xl"
-            >
-              <ChartBarIcon className="w-5 h-5" />
-              <span>Performance</span>
-            </button>
-          </nav>
-
-          {/* User Profile */}
-          <div className="p-4 border-t border-gray-200">
-            <div className="flex items-center space-x-3 mb-3">
-              <Avatar
-                src={null}
-                alt={user?.name || "User"}
-                size="w-10 h-10"
-                fallbackText={(user?.name || user?.email || "U")[0].toUpperCase()}
-              />
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-gray-900 truncate">
-                  {user?.name || user?.email?.split("@")[0] || "User"}
-                </p>
-                <p className="text-xs text-gray-500 truncate">{user?.email || ""}</p>
-              </div>
-            </div>
-            <button
-              onClick={handleSignOut}
-              className="w-full py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-            >
-              Sign Out
-            </button>
-          </div>
-        </div>
-      </div>
-
+    <div className="min-h-screen bg-gray-50">
       {/* Mobile Sidebar Overlay */}
       {sidebarOpen && (
         <div
@@ -279,34 +193,136 @@ function Performance({ onNavigate }) {
         />
       )}
 
-      {/* Main Content */}
-      <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Header */}
-        <header className="bg-white border-b border-gray-200 px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
+      {/* Sidebar */}
+      <aside
+        className={`fixed top-0 left-0 h-full bg-white shadow-xl z-50 transform transition-all duration-300 lg:translate-x-0 ${
+          sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
+        } ${
+          sidebarOpen ? "w-64" : "lg:w-16"
+        }`}
+      >
+        <div className={sidebarOpen ? "p-6" : "p-2"}>
+          <div className={`mb-8 ${sidebarOpen ? 'flex items-center justify-between' : ''}`}>
+            <div className={`flex items-center ${sidebarOpen ? 'space-x-3' : 'justify-center'}`}>
+              <div className="w-10 h-10 flex-shrink-0 bg-gradient-to-br from-red-600 to-red-800 rounded-xl flex items-center justify-center">
+                <SparklesIcon className="w-6 h-6 text-white" />
+              </div>
+              {sidebarOpen && <span className="text-xl font-bold text-red-800">Cognify AI</span>}
+            </div>
+            {sidebarOpen && (
               <button
-                onClick={() => setSidebarOpen(!sidebarOpen)}
-                className="lg:hidden p-2 hover:bg-gray-100 rounded-lg"
+                onClick={() => setSidebarOpen(false)}
+                className="lg:hidden p-2 hover:bg-gray-100 rounded-lg flex-shrink-0"
               >
-                {sidebarOpen ? (
-                  <XMarkIcon className="w-6 h-6 text-gray-600" />
-                ) : (
-                  <svg className="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-                  </svg>
-                )}
+                <XMarkIcon className="w-5 h-5 text-gray-600" />
               </button>
-              <div>
-                <h2 className="text-2xl font-bold text-gray-900">Track Performance</h2>
-                <p className="text-sm text-gray-600">Monitor your learning progress and achievements</p>
+            )}
+          </div>
+
+          <nav className="space-y-2">
+            <button
+              onClick={() => onNavigate && onNavigate("dashboard")}
+              className={`w-full flex items-center hover:bg-gray-100 text-gray-700 rounded-xl font-medium transition-colors ${
+                sidebarOpen ? "px-4 py-3 space-x-3" : "p-3 justify-center"
+              }`}
+              title="Dashboard"
+            >
+              <HomeIcon className="w-5 h-5 flex-shrink-0" />
+              {sidebarOpen && <span>Dashboard</span>}
+            </button>
+            <button
+              onClick={() => onNavigate && onNavigate("chat")}
+              className={`w-full flex items-center hover:bg-gray-100 text-gray-700 rounded-xl font-medium transition-colors ${
+                sidebarOpen ? "px-4 py-3 space-x-3" : "p-3 justify-center"
+              }`}
+              title="Chat"
+            >
+              <ChatBubbleLeftRightIcon className="w-5 h-5 flex-shrink-0" />
+              {sidebarOpen && <span>Chat</span>}
+            </button>
+            <button
+              onClick={() => onNavigate && onNavigate("notes")}
+              className={`w-full flex items-center hover:bg-gray-100 text-gray-700 rounded-xl font-medium transition-colors ${
+                sidebarOpen ? "px-4 py-3 space-x-3" : "p-3 justify-center"
+              }`}
+              title="Notes"
+            >
+              <DocumentTextIcon className="w-5 h-5 flex-shrink-0" />
+              {sidebarOpen && <span>Notes</span>}
+            </button>
+            <button
+              onClick={() => onNavigate && onNavigate("documents")}
+              className={`w-full flex items-center hover:bg-gray-100 text-gray-700 rounded-xl font-medium transition-colors ${
+                sidebarOpen ? "px-4 py-3 space-x-3" : "p-3 justify-center"
+              }`}
+              title="Documents"
+            >
+              <BookOpenIcon className="w-5 h-5 flex-shrink-0" />
+              {sidebarOpen && <span>Documents</span>}
+            </button>
+            <button
+              className={`w-full flex items-center bg-red-50 text-red-600 rounded-xl font-medium ${
+                sidebarOpen ? "px-4 py-3 space-x-3" : "p-3 justify-center"
+              }`}
+              title="Performance"
+            >
+              <ChartBarIcon className="w-5 h-5 flex-shrink-0" />
+              {sidebarOpen && <span>Performance</span>}
+            </button>
+          </nav>
+
+          {/* Toggle Button */}
+          <div className={`absolute bottom-6 left-0 right-0 ${sidebarOpen ? "px-6" : "px-2"}`}>
+            <button
+              onClick={() => setSidebarOpen(!sidebarOpen)}
+              className={`hidden lg:flex w-full items-center hover:bg-gray-100 text-gray-700 rounded-xl font-medium transition-colors ${
+                sidebarOpen ? "px-4 py-3 space-x-3" : "p-3 justify-center"
+              }`}
+              title={sidebarOpen ? "Close sidebar" : "Open sidebar"}
+            >
+              <svg
+                className="w-5 h-5 flex-shrink-0"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d={sidebarOpen ? "M11 19l-7-7 7-7m8 14l-7-7 7-7" : "M13 5l7 7-7 7M5 5l7 7-7 7"}
+                />
+              </svg>
+              {sidebarOpen && <span>Close sidebar</span>}
+            </button>
+          </div>
+        </div>
+      </aside>
+
+      {/* Main Content */}
+      <main className={`transition-all duration-300 ${sidebarOpen ? "lg:ml-64" : "lg:ml-16"}`}>
+        {/* Header */}
+        <nav className="bg-white/80 backdrop-blur-md shadow-sm sticky top-0 z-40">
+          <div className="max-w-7xl mx-auto px-6 py-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-4">
+                <button
+                  onClick={() => setSidebarOpen(!sidebarOpen)}
+                  className="lg:hidden p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                >
+                  <Bars3Icon className="w-6 h-6 text-gray-700" />
+                </button>
+                <div>
+                  <h2 className="text-2xl font-bold text-gray-900">Performance</h2>
+                  <p className="text-sm text-gray-600">Monitor your learning progress and achievements</p>
+                </div>
               </div>
             </div>
           </div>
-        </header>
+        </nav>
 
         {/* Content */}
-        <main className="flex-1 overflow-y-auto p-6">
+        <div className="p-6">
           {loading ? (
             <div className="flex items-center justify-center h-full">
               <div className="text-center">
@@ -501,8 +517,8 @@ function Performance({ onNavigate }) {
               </div>
             </div>
           )}
-        </main>
-      </div>
+        </div>
+      </main>
     </div>
   );
 }

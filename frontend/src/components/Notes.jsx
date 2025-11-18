@@ -2,6 +2,16 @@ import React, { useState, useEffect } from "react";
 import { useAuth, useUserId } from "../hooks/useAuth";
 import { apiService } from "../services/apiService";
 import Avatar from "./Avatar";
+import {
+  SparklesIcon,
+  ChatBubbleLeftRightIcon,
+  DocumentTextIcon,
+  BookOpenIcon,
+  ChartBarIcon,
+  AcademicCapIcon,
+  XMarkIcon,
+  Bars3Icon,
+} from "@heroicons/react/24/outline";
 
 function Notes({ onNavigate }) {
   const [notes, setNotes] = useState([]);
@@ -11,6 +21,7 @@ function Notes({ onNavigate }) {
   const [editContent, setEditContent] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [deleteConfirm, setDeleteConfirm] = useState(null);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
 
   const userId = useUserId();
   const { user, signOut } = useAuth();
@@ -111,56 +122,186 @@ function Notes({ onNavigate }) {
   );
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-red-50/30">
-      {/* Header */}
-      <header className="bg-white/80 backdrop-blur-sm border-b border-gray-200 sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto px-6 py-4">
-          <div className="flex items-center justify-between">
-            {/* Logo & Nav */}
-            <div className="flex items-center gap-8">
-              <h1 className="text-2xl font-bold bg-gradient-to-r from-red-600 to-red-700 bg-clip-text text-transparent">
-                Cognify
-              </h1>
-              <nav className="flex gap-1">
-                <button
-                  onClick={() => onNavigate && onNavigate("dashboard")}
-                  className="px-4 py-2 text-gray-600 hover:text-red-600 rounded-lg hover:bg-red-50 transition-colors"
-                >
-                  Dashboard
-                </button>
-                <button
-                  onClick={() => onNavigate && onNavigate("chat")}
-                  className="px-4 py-2 text-gray-600 hover:text-red-600 rounded-lg hover:bg-red-50 transition-colors"
-                >
-                  AI Chat
-                </button>
-                <button className="px-4 py-2 text-red-600 bg-red-50 rounded-lg font-medium">
-                  My Notes
-                </button>
-              </nav>
-            </div>
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-red-50/30 flex">
+      {/* Mobile Sidebar Overlay */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 bg-black/50 z-40 lg:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
 
-            {/* User Menu */}
-            <div className="flex items-center gap-4">
-              <Avatar name={user?.name || user?.email || "User"} size="sm" />
-              <div className="text-right">
-                <p className="text-sm font-medium text-gray-900">
-                  {user?.name || "Student"}
-                </p>
+      {/* Collapsible Sidebar */}
+      <aside
+        className={`fixed top-0 left-0 h-full bg-gradient-to-b from-red-900 via-red-800 to-red-900 shadow-xl z-50 transform transition-all duration-300 lg:translate-x-0 ${
+          sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
+        } ${
+          sidebarOpen ? "w-64" : "lg:w-16"
+        }`}
+      >
+        <div className="p-4 h-full flex flex-col">
+          {/* Header */}
+          <div className="mb-6">
+            {sidebarOpen ? (
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center">
+                    <SparklesIcon className="w-6 h-6 text-red-600" />
+                  </div>
+                  <span className="text-xl font-bold text-white">Cognify AI</span>
+                </div>
                 <button
-                  onClick={handleSignOut}
-                  className="text-xs text-gray-500 hover:text-red-600 transition-colors"
+                  onClick={() => setSidebarOpen(false)}
+                  className="lg:hidden p-2 hover:bg-red-700 rounded-lg transition-colors"
                 >
-                  Sign Out
+                  <XMarkIcon className="w-5 h-5 text-white" />
                 </button>
               </div>
-            </div>
+            ) : (
+              <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center mx-auto">
+                <SparklesIcon className="w-6 h-6 text-red-600" />
+              </div>
+            )}
+          </div>
+
+          {/* Navigation */}
+          <nav className="flex-1 space-y-2">
+            <button
+              onClick={() => onNavigate && onNavigate("dashboard")}
+              className={`w-full flex items-center px-4 py-3 text-red-100 hover:bg-red-700 rounded-xl font-medium transition-colors ${
+                sidebarOpen ? "space-x-3" : "justify-center"
+              }`}
+              title="Dashboard"
+            >
+              <ChartBarIcon className="w-5 h-5 flex-shrink-0" />
+              {sidebarOpen && <span>Dashboard</span>}
+            </button>
+            <button
+              onClick={() => onNavigate && onNavigate("chat")}
+              className={`w-full flex items-center px-4 py-3 text-red-100 hover:bg-red-700 rounded-xl font-medium transition-colors ${
+                sidebarOpen ? "space-x-3" : "justify-center"
+              }`}
+              title="Chat"
+            >
+              <ChatBubbleLeftRightIcon className="w-5 h-5 flex-shrink-0" />
+              {sidebarOpen && <span>Chat</span>}
+            </button>
+            <button
+              onClick={() => onNavigate && onNavigate("notes")}
+              className={`w-full flex items-center px-4 py-3 bg-red-700 text-white rounded-xl font-medium ${
+                sidebarOpen ? "space-x-3" : "justify-center"
+              }`}
+              title="Notes"
+            >
+              <DocumentTextIcon className="w-5 h-5 flex-shrink-0" />
+              {sidebarOpen && <span>Notes</span>}
+            </button>
+            <button
+              onClick={() => onNavigate && onNavigate("documents")}
+              className={`w-full flex items-center px-4 py-3 text-red-100 hover:bg-red-700 rounded-xl font-medium transition-colors ${
+                sidebarOpen ? "space-x-3" : "justify-center"
+              }`}
+              title="Documents"
+            >
+              <BookOpenIcon className="w-5 h-5 flex-shrink-0" />
+              {sidebarOpen && <span>Documents</span>}
+            </button>
+            <button
+              onClick={() => onNavigate && onNavigate("performance")}
+              className={`w-full flex items-center px-4 py-3 text-red-100 hover:bg-red-700 rounded-xl font-medium transition-colors ${
+                sidebarOpen ? "space-x-3" : "justify-center"
+              }`}
+              title="Performance"
+            >
+              <AcademicCapIcon className="w-5 h-5 flex-shrink-0" />
+              {sidebarOpen && <span>Performance</span>}
+            </button>
+          </nav>
+
+          {/* Bottom Section */}
+          <div className="border-t border-red-700 pt-4 space-y-2">
+            {/* Toggle Sidebar */}
+            <button
+              onClick={() => setSidebarOpen(!sidebarOpen)}
+              className={`hidden lg:flex w-full items-center px-4 py-3 text-red-100 hover:bg-red-700 rounded-xl font-medium transition-colors ${
+                sidebarOpen ? "space-x-3" : "justify-center"
+              }`}
+              title={sidebarOpen ? "Close sidebar" : "Open sidebar"}
+            >
+              <svg
+                className="w-5 h-5 flex-shrink-0"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d={sidebarOpen ? "M11 19l-7-7 7-7m8 14l-7-7 7-7" : "M13 5l7 7-7 7M5 5l7 7-7 7"}
+                />
+              </svg>
+              {sidebarOpen && <span>Close sidebar</span>}
+            </button>
+
+            {/* User Profile */}
+            {user && (
+              <button className={`w-full flex items-center px-4 py-3 hover:bg-red-700 rounded-xl transition-colors ${
+                sidebarOpen ? "space-x-3" : "justify-center"
+              }`}>
+                <div className="flex-shrink-0">
+                  <Avatar
+                    src={null}
+                    alt={`${user.name || user.email?.split("@")[0] || "User"}'s avatar`}
+                    size="w-8 h-8"
+                    fallbackText={(user.name || user.email?.split("@")[0] || "U")[0].toUpperCase()}
+                  />
+                </div>
+                {sidebarOpen && (
+                  <div className="flex-1 min-w-0 text-left">
+                    <p className="text-sm font-medium text-white truncate">
+                      {user.name || user.email?.split("@")[0]}
+                    </p>
+                  </div>
+                )}
+              </button>
+            )}
           </div>
         </div>
-      </header>
+      </aside>
+
+      {/* Main Content Area */}
+      <div className={`flex-1 transition-all duration-300 ${
+        sidebarOpen ? "lg:ml-64" : "lg:ml-16"
+      }`}>
+        {/* Top Navigation Bar */}
+        <header className="bg-white/80 backdrop-blur-sm border-b border-gray-200 sticky top-0 z-30">
+          <div className="px-6 py-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-4">
+                <button
+                  onClick={() => setSidebarOpen(!sidebarOpen)}
+                  className="lg:hidden p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                >
+                  <Bars3Icon className="w-6 h-6 text-gray-700" />
+                </button>
+                <h1 className="text-2xl font-bold bg-gradient-to-r from-red-600 to-red-700 bg-clip-text text-transparent">
+                  My Notes
+                </h1>
+              </div>
+
+              <button
+                onClick={handleSignOut}
+                className="px-4 py-2 text-sm text-gray-700 hover:text-red-600 font-medium transition-colors"
+              >
+                Sign Out
+              </button>
+            </div>
+          </div>
+        </header>
 
       {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-6 py-8">
+      <div className="px-6 py-8">
         {/* Page Header */}
         <div className="mb-8">
           <h2 className="text-3xl font-bold text-gray-900 mb-2">
@@ -469,6 +610,7 @@ function Notes({ onNavigate }) {
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 }

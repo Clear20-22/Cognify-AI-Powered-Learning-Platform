@@ -23,7 +23,7 @@ import {
 function Dashboard({ onNavigate }) {
   const { user, signOut } = useAuth();
   const userId = useUserId();
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [editMode, setEditMode] = useState(false);
@@ -261,14 +261,16 @@ function Dashboard({ onNavigate }) {
                 <Bars3Icon className="w-6 h-6 text-gray-700" />
               </button>
 
-              <div className="flex items-center space-x-3">
-                <div className="w-10 h-10 bg-gradient-to-br from-red-600 to-red-800 rounded-xl flex items-center justify-center shadow-lg">
-                  <SparklesIcon className="w-6 h-6 text-white" />
+              {sidebarOpen && (
+                <div className="flex items-center space-x-3">
+                  <div className="w-10 h-10 bg-gradient-to-br from-red-600 to-red-800 rounded-xl flex items-center justify-center shadow-lg">
+                    <SparklesIcon className="w-6 h-6 text-white" />
+                  </div>
+                  <h1 className="text-2xl font-bold bg-gradient-to-r from-red-600 to-red-800 bg-clip-text text-transparent">
+                    Cognify AI
+                  </h1>
                 </div>
-                <h1 className="text-2xl font-bold bg-gradient-to-r from-red-600 to-red-800 bg-clip-text text-transparent">
-                  Cognify AI
-                </h1>
-              </div>
+              )}
             </div>
 
             {/* Right - User Menu */}
@@ -653,75 +655,125 @@ function Dashboard({ onNavigate }) {
 
       {/* Sidebar */}
       <aside
-        className={`fixed top-0 left-0 h-full w-64 bg-white shadow-xl z-50 transform transition-transform lg:translate-x-0 ${
-          sidebarOpen ? "translate-x-0" : "-translate-x-full"
+        className={`fixed top-0 left-0 h-full bg-white shadow-xl z-50 transform transition-all duration-300 lg:translate-x-0 ${
+          sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
+        } ${
+          sidebarOpen ? "w-64" : "lg:w-16"
         }`}
       >
-        <div className="p-6">
-          <div className="flex items-center justify-between mb-8">
-            <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 bg-gradient-to-br from-red-600 to-red-800 rounded-xl flex items-center justify-center">
+        <div className={sidebarOpen ? "p-6" : "p-2"}>
+          <div className={`mb-8 ${sidebarOpen ? 'flex items-center justify-between' : ''}`}>
+            <div className={`flex items-center ${sidebarOpen ? 'space-x-3' : 'justify-center'}`}>
+              <div className="w-10 h-10 flex-shrink-0 bg-gradient-to-br from-red-600 to-red-800 rounded-xl flex items-center justify-center">
                 <SparklesIcon className="w-6 h-6 text-white" />
               </div>
-              <span className="text-xl font-bold text-red-800">Cognify AI</span>
+              {sidebarOpen && <span className="text-xl font-bold text-red-800">Cognify AI</span>}
             </div>
-            <button
-              onClick={() => setSidebarOpen(false)}
-              className="lg:hidden p-2 hover:bg-gray-100 rounded-lg"
-            >
-              <XMarkIcon className="w-5 h-5 text-gray-600" />
-            </button>
+            {sidebarOpen && (
+              <button
+                onClick={() => setSidebarOpen(false)}
+                className="lg:hidden p-2 hover:bg-gray-100 rounded-lg flex-shrink-0"
+              >
+                <XMarkIcon className="w-5 h-5 text-gray-600" />
+              </button>
+            )}
           </div>
 
           <nav className="space-y-2">
             <button
               onClick={() => onNavigate && onNavigate("dashboard")}
-              className="w-full flex items-center space-x-3 px-4 py-3 bg-red-50 text-red-600 rounded-xl font-medium"
+              className={`w-full flex items-center bg-red-50 text-red-600 rounded-xl font-medium ${
+                sidebarOpen ? "px-4 py-3 space-x-3" : "p-3 justify-center"
+              }`}
+              title="Dashboard"
             >
-              <ChartBarIcon className="w-5 h-5" />
-              <span>Dashboard</span>
+              <ChartBarIcon className="w-5 h-5 flex-shrink-0" />
+              {sidebarOpen && <span>Dashboard</span>}
             </button>
             <button
               onClick={() => onNavigate && onNavigate("chat")}
-              className="w-full flex items-center space-x-3 px-4 py-3 hover:bg-gray-100 text-gray-700 rounded-xl font-medium transition-colors"
+              className={`w-full flex items-center hover:bg-gray-100 text-gray-700 rounded-xl font-medium transition-colors ${
+                sidebarOpen ? "px-4 py-3 space-x-3" : "p-3 justify-center"
+              }`}
+              title="Chat"
             >
-              <ChatBubbleLeftRightIcon className="w-5 h-5" />
-              <span>Chat</span>
+              <ChatBubbleLeftRightIcon className="w-5 h-5 flex-shrink-0" />
+              {sidebarOpen && <span>Chat</span>}
             </button>
             <button
               onClick={() => onNavigate && onNavigate("notes")}
-              className="w-full flex items-center space-x-3 px-4 py-3 hover:bg-gray-100 text-gray-700 rounded-xl font-medium transition-colors"
+              className={`w-full flex items-center hover:bg-gray-100 text-gray-700 rounded-xl font-medium transition-colors ${
+                sidebarOpen ? "px-4 py-3 space-x-3" : "p-3 justify-center"
+              }`}
+              title="Notes"
             >
-              <DocumentTextIcon className="w-5 h-5" />
-              <span>Notes</span>
+              <DocumentTextIcon className="w-5 h-5 flex-shrink-0" />
+              {sidebarOpen && <span>Notes</span>}
             </button>
             <button
               onClick={() => onNavigate && onNavigate("documents")}
-              className="w-full flex items-center space-x-3 px-4 py-3 hover:bg-gray-100 text-gray-700 rounded-xl font-medium transition-colors"
+              className={`w-full flex items-center hover:bg-gray-100 text-gray-700 rounded-xl font-medium transition-colors ${
+                sidebarOpen ? "px-4 py-3 space-x-3" : "p-3 justify-center"
+              }`}
+              title="Documents"
             >
-              <BookOpenIcon className="w-5 h-5" />
-              <span>Documents</span>
+              <BookOpenIcon className="w-5 h-5 flex-shrink-0" />
+              {sidebarOpen && <span>Documents</span>}
             </button>
             <button
               onClick={() => onNavigate && onNavigate("performance")}
-              className="w-full flex items-center space-x-3 px-4 py-3 hover:bg-gray-100 text-gray-700 rounded-xl font-medium transition-colors"
+              className={`w-full flex items-center hover:bg-gray-100 text-gray-700 rounded-xl font-medium transition-colors ${
+                sidebarOpen ? "px-4 py-3 space-x-3" : "p-3 justify-center"
+              }`}
+              title="Performance"
             >
-              <TrophyIcon className="w-5 h-5" />
-              <span>Performance</span>
+              <TrophyIcon className="w-5 h-5 flex-shrink-0" />
+              {sidebarOpen && <span>Performance</span>}
             </button>
             <button
               onClick={() => onNavigate && onNavigate("history")}
-              className="w-full flex items-center space-x-3 px-4 py-3 hover:bg-gray-100 text-gray-700 rounded-xl font-medium transition-colors"
+              className={`w-full flex items-center hover:bg-gray-100 text-gray-700 rounded-xl font-medium transition-colors ${
+                sidebarOpen ? "px-4 py-3 space-x-3" : "p-3 justify-center"
+              }`}
+              title="History"
             >
-              <ClockIcon className="w-5 h-5" />
-              <span>History</span>
+              <ClockIcon className="w-5 h-5 flex-shrink-0" />
+              {sidebarOpen && <span>History</span>}
             </button>
           </nav>
+
+          {/* Toggle Button */}
+          <div className={`absolute bottom-6 left-0 right-0 ${sidebarOpen ? "px-6" : "px-2"}`}>
+            <button
+              onClick={() => setSidebarOpen(!sidebarOpen)}
+              className={`hidden lg:flex w-full items-center hover:bg-gray-100 text-gray-700 rounded-xl font-medium transition-colors ${
+                sidebarOpen ? "px-4 py-3 space-x-3" : "p-3 justify-center"
+              }`}
+              title={sidebarOpen ? "Close sidebar" : "Open sidebar"}
+            >
+              <svg
+                className="w-5 h-5 flex-shrink-0"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d={sidebarOpen ? "M11 19l-7-7 7-7m8 14l-7-7 7-7" : "M13 5l7 7-7 7M5 5l7 7-7 7"}
+                />
+              </svg>
+              {sidebarOpen && <span>Close sidebar</span>}
+            </button>
+          </div>
         </div>
       </aside>
 
       {/* Main Content */}
-      <main className="lg:ml-64 p-6 lg:p-8">
+      <main className={`transition-all duration-300 p-6 lg:p-8 ${
+        sidebarOpen ? "lg:ml-64" : "lg:ml-16"
+      }`}>
         <div className="max-w-7xl mx-auto">
           {/* Welcome Header */}
           <div className="mb-8">
