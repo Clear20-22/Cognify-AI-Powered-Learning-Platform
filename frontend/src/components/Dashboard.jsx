@@ -703,6 +703,13 @@ function Dashboard({ onNavigate }) {
               <span>Documents</span>
             </button>
             <button
+              onClick={() => onNavigate && onNavigate("performance")}
+              className="w-full flex items-center space-x-3 px-4 py-3 hover:bg-gray-100 text-gray-700 rounded-xl font-medium transition-colors"
+            >
+              <TrophyIcon className="w-5 h-5" />
+              <span>Performance</span>
+            </button>
+            <button
               onClick={() => onNavigate && onNavigate("history")}
               className="w-full flex items-center space-x-3 px-4 py-3 hover:bg-gray-100 text-gray-700 rounded-xl font-medium transition-colors"
             >
