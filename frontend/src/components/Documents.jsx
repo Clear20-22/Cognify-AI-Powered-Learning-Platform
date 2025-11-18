@@ -448,15 +448,17 @@ function Documents({ onNavigate }) {
 
             {/* User Profile */}
             {user && (
-              <button className={`w-full flex items-center px-4 py-3 hover:bg-red-700 rounded-xl overflow-hidden transition-colors ${
-                sidebarOpen ? "space-x-3" : "justify-center"
+              <button className={`w-full flex items-center py-3 hover:bg-red-700 rounded-xl transition-colors ${
+                sidebarOpen ? "px-4 space-x-3" : "justify-center"
               }`}>
-                <Avatar
-                  src={null}
-                  alt={`${user.name || user.email?.split("@")[0] || "User"}'s avatar`}
-                  size="w-7 h-7"
-                  fallbackText={(user.name || user.email?.split("@")[0] || "U")[0].toUpperCase()}
-                />
+                <div className="flex-shrink-0">
+                  <Avatar
+                    src={null}
+                    alt={`${user.name || user.email?.split("@")[0] || "User"}'s avatar`}
+                    size="w-7 h-7"
+                    fallbackText={(user.name || user.email?.split("@")[0] || "U")[0].toUpperCase()}
+                  />
+                </div>
                 {sidebarOpen && (
                   <div className="flex-1 min-w-0 text-left">
                     <p className="text-sm font-medium text-white truncate">
