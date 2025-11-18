@@ -789,11 +789,11 @@ function Dashboard({ onNavigate }) {
                 onClick={() => onNavigate && onNavigate("documents")}
               />
               <QuickActionCard
-                icon={AcademicCapIcon}
-                title="Take Practice Test"
-                description="Test your knowledge with AI-generated exams"
-                color="from-green-500 to-green-600"
-                onClick={() => onNavigate && onNavigate("chat")}
+                icon={ChartBarIcon}
+                title="Track Performance"
+                description="View detailed analytics and progress"
+                color="from-yellow-500 to-orange-600"
+                onClick={() => onNavigate && onNavigate("performance")}
               />
             </div>
           </div>

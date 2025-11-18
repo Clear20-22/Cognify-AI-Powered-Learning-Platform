@@ -6,6 +6,7 @@ import Dashboard from "./components/Dashboard";
 import Notes from "./components/Notes";
 import Documents from "./components/Documents";
 import History from "./components/History";
+import Performance from "./components/Performance";
 import AuthModal from "./components/AuthModal";
 import { AuthProvider, useAuth } from "./hooks/useAuth.jsx";
 import "./index.css";
@@ -124,6 +125,16 @@ function AppContent() {
           element={
             user ? (
               <History onNavigate={handleNavigate} />
+            ) : (
+              <Navigate to="/" replace />
+            )
+          }
+        />
+        <Route
+          path="/performance"
+          element={
+            user ? (
+              <Performance onNavigate={handleNavigate} />
             ) : (
               <Navigate to="/" replace />
             )
