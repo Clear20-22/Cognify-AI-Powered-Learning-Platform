@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
-import { useAuth } from "../hooks/useAuth.jsx";
+import { useAuth, useUserId } from "../hooks/useAuth.jsx";
+import { apiService } from "../services/apiService";
 import Avatar from "./Avatar";
 import {
   SparklesIcon,
@@ -21,6 +22,7 @@ import {
 
 function Dashboard({ onNavigate }) {
   const { user, signOut } = useAuth();
+  const userId = useUserId();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
@@ -38,56 +40,123 @@ function Dashboard({ onNavigate }) {
     averageScore: 0,
   });
 
-  const [recentActivity, setRecentActivity] = useState([
-    {
-      id: 1,
-      type: "chat",
-      title: "Machine Learning Basics",
-      time: "2 hours ago",
-      icon: ChatBubbleLeftRightIcon,
-      color: "from-blue-500 to-blue-600",
-    },
-    {
-      id: 2,
-      type: "exam",
-      title: "Data Structures Quiz",
-      time: "5 hours ago",
-      score: 85,
-      icon: AcademicCapIcon,
-      color: "from-green-500 to-green-600",
-    },
-    {
-      id: 3,
-      type: "note",
-      title: "Python Functions",
-      time: "1 day ago",
-      icon: DocumentTextIcon,
-      color: "from-purple-500 to-purple-600",
-    },
-  ]);
+  const [recentActivity, setRecentActivity] = useState([]);
+  const [loadingActivity, setLoadingActivity] = useState(true);
 
   useEffect(() => {
-    // Load stats when component mounts
-    const loadStats = async () => {
-      // TODO: Replace with actual API calls
-      setStats({
-        totalChats: 12,
-        totalNotes: 25,
-        totalExams: 8,
-        studyStreak: 7,
-        hoursStudied: 24.5,
-        averageScore: 87,
-      });
+    // Load stats and activity when component mounts
+    const loadDashboardData = async () => {
+      if (!userId) return;
+
+      try {
+        setLoadingActivity(true);
+
+        // Fetch chats, notes, and exams in parallel
+        const [chatsData, notesData, examsData] = await Promise.all([
+          apiService.getUserChats(userId).catch(() => ({ chats: [] })),
+          apiService.getUserNotes(userId).catch(() => ({ notes: [] })),
+          apiService.getUserExams(userId).catch(() => ({ exams: [] })),
+        ]);
+
+        const chats = chatsData.chats || [];
+        const notes = notesData.notes || [];
+        const exams = examsData.exams || [];
+
+        // Calculate stats
+        const completedExams = exams.filter(e => e.status === 'completed' || e.score !== undefined);
+        const totalScore = completedExams.reduce((sum, exam) => sum + (exam.score || 0), 0);
+        const avgScore = completedExams.length > 0 ? Math.round(totalScore / completedExams.length) : 0;
+
+        setStats({
+          totalChats: chats.length,
+          totalNotes: notes.length,
+          totalExams: exams.length,
+          studyStreak: 7, // TODO: Calculate actual streak
+          hoursStudied: Math.round((chats.length * 0.5 + exams.length * 0.75) * 10) / 10,
+          averageScore: avgScore,
+        });
+
+        // Build recent activity from chats, notes, and exams
+        const activities = [];
+
+        // Add recent chats
+        chats.slice(0, 3).forEach(chat => {
+          activities.push({
+            id: `chat_${chat.id || chat.chat_id}`,
+            type: "chat",
+            title: chat.topic || "Conversation",
+            time: formatTimeAgo(chat.created_at),
+            icon: ChatBubbleLeftRightIcon,
+            color: "from-blue-500 to-blue-600",
+            timestamp: new Date(chat.created_at).getTime(),
+          });
+        });
+
+        // Add recent exams
+        exams.slice(0, 2).forEach(exam => {
+          activities.push({
+            id: `exam_${exam.id || exam.exam_id}`,
+            type: "exam",
+            title: exam.title || exam.topic || "Assessment",
+            time: formatTimeAgo(exam.created_at),
+            score: exam.score,
+            icon: AcademicCapIcon,
+            color: "from-green-500 to-green-600",
+            timestamp: new Date(exam.created_at).getTime(),
+          });
+        });
+
+        // Add recent notes
+        notes.slice(0, 2).forEach(note => {
+          activities.push({
+            id: `note_${note.id || note.note_id}`,
+            type: "note",
+            title: note.content ? note.content.substring(0, 50) + (note.content.length > 50 ? '...' : '') : "Note",
+            time: formatTimeAgo(note.created_at),
+            icon: DocumentTextIcon,
+            color: "from-purple-500 to-purple-600",
+            timestamp: new Date(note.created_at).getTime(),
+          });
+        });
+
+        // Sort by most recent and take top 5
+        activities.sort((a, b) => b.timestamp - a.timestamp);
+        setRecentActivity(activities.slice(0, 5));
+
+      } catch (error) {
+        console.error("Failed to load dashboard data:", error);
+      } finally {
+        setLoadingActivity(false);
+      }
     };
 
-    if (user) {
-      loadStats();
+    if (user && userId) {
+      loadDashboardData();
       setEditedUser({
         name: user.name || "",
         email: user.email || "",
       });
     }
-  }, [user]);
+  }, [user, userId]);
+
+  const formatTimeAgo = (dateString) => {
+    try {
+      const date = new Date(dateString);
+      const now = new Date();
+      const diffMs = now - date;
+      const diffMins = Math.floor(diffMs / 60000);
+      const diffHours = Math.floor(diffMs / 3600000);
+      const diffDays = Math.floor(diffMs / 86400000);
+
+      if (diffMins < 1) return "Just now";
+      if (diffMins < 60) return `${diffMins} minute${diffMins > 1 ? 's' : ''} ago`;
+      if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
+      if (diffDays < 7) return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
+      return date.toLocaleDateString();
+    } catch {
+      return dateString;
+    }
+  };
 
   const handleSignOut = async () => {
     await signOut();
@@ -745,11 +814,25 @@ function Dashboard({ onNavigate }) {
                     View All
                   </button>
                 </div>
-                <div className="space-y-2">
-                  {recentActivity.map((activity) => (
-                    <ActivityItem key={activity.id} activity={activity} />
-                  ))}
-                </div>
+                {loadingActivity ? (
+                  <div className="flex items-center justify-center py-8">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-600"></div>
+                  </div>
+                ) : recentActivity.length === 0 ? (
+                  <div className="text-center py-12">
+                    <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <ClockIcon className="w-8 h-8 text-gray-400" />
+                    </div>
+                    <p className="text-gray-600 mb-2">No recent activity yet</p>
+                    <p className="text-sm text-gray-500">Start a chat or take an exam to see your activity here</p>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {recentActivity.map((activity) => (
+                      <ActivityItem key={activity.id} activity={activity} />
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
 
