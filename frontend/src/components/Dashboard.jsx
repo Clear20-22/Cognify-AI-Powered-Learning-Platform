@@ -852,7 +852,7 @@ function Dashboard({ onNavigate }) {
                 title="Take Practice Test"
                 description="Test your knowledge with AI-generated exams"
                 color="from-green-500 to-green-600"
-                onClick={() => onNavigate && onNavigate("chat")}
+                onClick={() => onNavigate && onNavigate("practicetest")}
               />
               <QuickActionCard
                 icon={ChartBarIcon}

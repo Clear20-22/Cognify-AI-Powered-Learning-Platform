@@ -269,6 +269,27 @@ class ApiService {
     }
   }
 
+  async submitExam(data) {
+    try {
+      const response = await fetch(`${this.baseURL}/api/exams/submit`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(data)
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('API Error:', error);
+      throw new Error(`Failed to submit exam: ${error.message}`);
+    }
+  }
+
   async completeExam(examId) {
     try {
       const response = await fetch(`${this.baseURL}/api/exams/${examId}/complete`, {

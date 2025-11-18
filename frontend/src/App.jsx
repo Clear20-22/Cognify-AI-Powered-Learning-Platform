@@ -7,6 +7,7 @@ import Notes from "./components/Notes";
 import Documents from "./components/Documents";
 import History from "./components/History";
 import Performance from "./components/Performance";
+import PracticeTest from "./components/PracticeTest";
 import AuthModal from "./components/AuthModal";
 import { AuthProvider, useAuth } from "./hooks/useAuth.jsx";
 import "./index.css";
@@ -135,6 +136,16 @@ function AppContent() {
           element={
             user ? (
               <Performance onNavigate={handleNavigate} />
+            ) : (
+              <Navigate to="/" replace />
+            )
+          }
+        />
+        <Route
+          path="/practicetest"
+          element={
+            user ? (
+              <PracticeTest onNavigate={handleNavigate} />
             ) : (
               <Navigate to="/" replace />
             )

@@ -103,6 +103,23 @@ async def submit_exam(
         )
 
 
+@router.get("/users/{user_id}")
+async def get_user_exams(
+    user_id: str,
+    exam_service: ExamService = Depends(get_exam_service)
+):
+    """Get all exams for a user."""
+    try:
+        exams = await exam_service.get_user_exams(user_id)
+        return {"exams": exams}
+    except Exception as e:
+        logger.error(f"Get user exams error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to get user exams: {str(e)}"
+        )
+
+
 @router.get("/{exam_id}")
 async def get_exam(
     exam_id: str,

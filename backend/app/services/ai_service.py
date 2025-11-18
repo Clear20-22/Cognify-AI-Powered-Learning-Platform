@@ -293,27 +293,54 @@ Explanation: [text]"""
     
     def _parse_exam_questions(self, text: str) -> List[Dict[str, Any]]:
         """Parse AI-generated exam questions."""
-        # Simplified parsing - in production, use more robust parsing
         questions = []
         current = {}
+        question_lines = []
         
         for line in text.split('\n'):
             line = line.strip()
+            if not line:
+                continue
+                
             if line.startswith('Question'):
-                if current:
+                # Save previous question if exists
+                if current and current.get("question"):
                     questions.append(current)
-                current = {"question": line.split(':', 1)[1].strip() if ':' in line else line, "options": []}
+                
+                # Start new question
+                question_text = line.split(':', 1)[1].strip() if ':' in line else ""
+                current = {"question": question_text, "options": [], "question_lines": []}
+                question_lines = [question_text] if question_text else []
+                
             elif line.startswith(('A)', 'B)', 'C)', 'D)')):
+                # If we were collecting question lines, join them
+                if question_lines and current:
+                    current["question"] = " ".join(question_lines).strip()
+                    question_lines = []
                 current.get("options", []).append(line[2:].strip())
+                
             elif line.startswith('Correct:'):
-                current["correct"] = line.split(':', 1)[1].strip()
+                current["correct"] = line.split(':', 1)[1].strip()[0].upper()  # Get first letter
+                
             elif line.startswith('Explanation:'):
                 current["explanation"] = line.split(':', 1)[1].strip()
+                
+            else:
+                # If we're building a question and haven't hit options yet
+                if current and not current.get("options"):
+                    question_lines.append(line)
         
-        if current:
+        # Don't forget the last question
+        if current and current.get("question"):
             questions.append(current)
         
-        return questions if questions else self._demo_exam("the topic", 3)
+        # Validate questions have required fields
+        valid_questions = []
+        for q in questions:
+            if q.get("question") and q.get("options") and len(q["options"]) >= 4 and q.get("correct"):
+                valid_questions.append(q)
+        
+        return valid_questions if valid_questions else self._demo_exam("the topic", 3)
     
     def _demo_exam(self, topic: str, num_questions: int) -> List[Dict[str, Any]]:
         """Generate demo exam questions."""

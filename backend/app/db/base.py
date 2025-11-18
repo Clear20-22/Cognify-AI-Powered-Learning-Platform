@@ -98,6 +98,9 @@ class MongoDataStore(BaseRepository):
     async def update_exam(self, exam_id: str, updates: Dict) -> Optional[Dict]:
         return await self.update("exams", exam_id, updates)
     
+    async def get_user_exams(self, user_id: str) -> List[Dict]:
+        return await self.list("exams", {"user_id": user_id})
+    
     # Note methods
     async def add_note(self, note_id: str, note_data: Dict) -> Dict:
         return await self.create("notes", note_id, note_data)
