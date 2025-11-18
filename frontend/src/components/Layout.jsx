@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth.jsx";
 import Avatar from "./Avatar";
 import ThreeLine from "../assets/three-line.svg";
@@ -6,9 +7,11 @@ import ThreeLine from "../assets/three-line.svg";
 function Layout({ children, showHero = false, heroContent = null }) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const { user, loading, signOut } = useAuth();
+  const navigate = useNavigate();
 
   const handleSignOut = async () => {
     await signOut();
+    navigate("/");
   };
 
   return (
@@ -26,15 +29,15 @@ function Layout({ children, showHero = false, heroContent = null }) {
       {/* Navigation */}
       <nav className="relative z-10 px-6 py-4 md:px-12 md:py-6">
         <div className="flex justify-between items-center md:grid md:grid-cols-3">
-          <div className="flex items-center gap-3">
+          <Link to="/" className="flex items-center gap-3">
             <div className="w-8 h-8 bg-black rounded-full"></div>
             <h1 className="text-xl font-bold tracking-tight">EduAI</h1>
-          </div>
+          </Link>
 
           <div className="hidden md:flex items-center justify-center space-x-8">
-            <a href="/" className="hover:underline">
+            <Link to="/" className="hover:underline">
               Home
-            </a>
+            </Link>
             <a href="#features" className="hover:underline">
               Features
             </a>
@@ -75,12 +78,12 @@ function Layout({ children, showHero = false, heroContent = null }) {
                   </button>
                 </div>
               ) : (
-                <a
-                  href="/"
+                <Link
+                  to="/"
                   className="px-4 py-2 text-sm bg-black text-white rounded hover:bg-gray-800 transition-colors"
                 >
                   Get Started
-                </a>
+                </Link>
               )}
             </div>
           </div>
@@ -89,13 +92,13 @@ function Layout({ children, showHero = false, heroContent = null }) {
         {/* Mobile Menu */}
         {isMenuOpen && (
           <div className="md:hidden mt-4 space-y-4 py-4 text-center">
-            <a href="/" className="block hover:underline">
+            <Link to="/" className="block hover:underline" onClick={() => setIsMenuOpen(false)}>
               Home
-            </a>
-            <a href="#features" className="block hover:underline">
+            </Link>
+            <a href="#features" className="block hover:underline" onClick={() => setIsMenuOpen(false)}>
               Features
             </a>
-            <a href="#about" className="block hover:underline">
+            <a href="#about" className="block hover:underline" onClick={() => setIsMenuOpen(false)}>
               About Us
             </a>
             <div className="pt-4 space-y-2">
@@ -120,12 +123,13 @@ function Layout({ children, showHero = false, heroContent = null }) {
                   </button>
                 </div>
               ) : (
-                <a
-                  href="/"
+                <Link
+                  to="/"
                   className="block w-full py-2 text-sm bg-black text-white rounded hover:bg-gray-800 transition-colors"
+                  onClick={() => setIsMenuOpen(false)}
                 >
                   Get Started
-                </a>
+                </Link>
               )}
             </div>
           </div>

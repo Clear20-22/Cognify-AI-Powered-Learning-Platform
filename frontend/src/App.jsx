@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { Routes, Route, Navigate, useNavigate, useLocation } from "react-router-dom";
 import LandingPage from "./components/LandingPage";
 import ChatPage from "./components/ChatPage";
 import Dashboard from "./components/Dashboard";
@@ -12,14 +13,15 @@ import "./index.css";
 function AppContent() {
   const { user, loading, signInAnonymously } = useAuth();
   const [showAuthModal, setShowAuthModal] = useState(false);
-  const [currentPage, setCurrentPage] = useState("landing");
+  const navigate = useNavigate();
+  const location = useLocation();
 
   const handleGetStarted = async () => {
     if (!user && !loading) {
       // Sign in anonymously for demo
       await signInAnonymously();
     }
-    setCurrentPage("dashboard");
+    navigate("/dashboard");
   };
 
   const handleSignIn = () => {
@@ -28,19 +30,19 @@ function AppContent() {
 
   const handleAuthSuccess = () => {
     setShowAuthModal(false);
-    setCurrentPage("dashboard");
+    navigate("/dashboard");
   };
 
   const handleNavigate = (page) => {
-    setCurrentPage(page);
+    navigate(`/${page}`);
   };
 
   // Automatically redirect to dashboard when user logs in
   React.useEffect(() => {
-    if (user && currentPage === "landing") {
-      setCurrentPage("dashboard");
+    if (user && location.pathname === "/") {
+      navigate("/dashboard");
     }
-  }, [user, currentPage]);
+  }, [user, location.pathname, navigate]);
 
   if (loading) {
     return (
@@ -55,24 +57,70 @@ function AppContent() {
 
   return (
     <div className="App">
-      {currentPage === "landing" && (
-        <LandingPage
-          onGetStarted={handleGetStarted}
-          showAuthModal={showAuthModal}
-          setShowAuthModal={setShowAuthModal}
-          onAuthSuccess={handleAuthSuccess}
+      <Routes>
+        <Route
+          path="/"
+          element={
+            <LandingPage
+              onGetStarted={handleGetStarted}
+              showAuthModal={showAuthModal}
+              setShowAuthModal={setShowAuthModal}
+              onAuthSuccess={handleAuthSuccess}
+            />
+          }
         />
-      )}
-
-      {currentPage === "dashboard" && <Dashboard onNavigate={handleNavigate} />}
-
-      {currentPage === "chat" && <ChatPage onNavigate={handleNavigate} />}
-
-      {currentPage === "notes" && <Notes onNavigate={handleNavigate} />}
-
-      {currentPage === "documents" && <Documents onNavigate={handleNavigate} />}
-
-      {currentPage === "history" && <History onNavigate={handleNavigate} />}
+        <Route
+          path="/dashboard"
+          element={
+            user ? (
+              <Dashboard onNavigate={handleNavigate} />
+            ) : (
+              <Navigate to="/" replace />
+            )
+          }
+        />
+        <Route
+          path="/chat"
+          element={
+            user ? (
+              <ChatPage onNavigate={handleNavigate} />
+            ) : (
+              <Navigate to="/" replace />
+            )
+          }
+        />
+        <Route
+          path="/notes"
+          element={
+            user ? (
+              <Notes onNavigate={handleNavigate} />
+            ) : (
+              <Navigate to="/" replace />
+            )
+          }
+        />
+        <Route
+          path="/documents"
+          element={
+            user ? (
+              <Documents onNavigate={handleNavigate} />
+            ) : (
+              <Navigate to="/" replace />
+            )
+          }
+        />
+        <Route
+          path="/history"
+          element={
+            user ? (
+              <History onNavigate={handleNavigate} />
+            ) : (
+              <Navigate to="/" replace />
+            )
+          }
+        />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
     </div>
   );
 }
