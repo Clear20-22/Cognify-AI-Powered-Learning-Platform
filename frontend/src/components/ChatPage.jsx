@@ -170,15 +170,102 @@ function ChatPage({ onNavigate }) {
   // Track saved notes (messageId -> noteId mapping)
   const [savedNotes, setSavedNotes] = useState({});
 
+  // Search state
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState([]);
+
+  // History state
+  const [historyExpanded, setHistoryExpanded] = useState(false);
+  const [chatHistory, setChatHistory] = useState([]);
+
   // Get real user ID
   const userId = useUserId();
   const { user, signOut } = useAuth();
+
+  // Load chat history when component mounts
+  useEffect(() => {
+    const loadChatHistory = async () => {
+      if (!userId) return;
+      
+      try {
+        const result = await apiService.getUserChats(userId);
+        if (result && result.chats) {
+          setChatHistory(result.chats);
+        }
+      } catch (error) {
+        console.error("Failed to load chat history:", error);
+      }
+    };
+
+    loadChatHistory();
+  }, [userId]);
+
+  // Group chats by date
+  const groupChatsByDate = (chats) => {
+    const groups = {};
+    const today = new Date();
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+    const lastWeek = new Date(today);
+    lastWeek.setDate(lastWeek.getDate() - 7);
+
+    chats.forEach((chat) => {
+      const chatDate = new Date(chat.created_at);
+      let groupKey;
+
+      if (chatDate.toDateString() === today.toDateString()) {
+        groupKey = "Today";
+      } else if (chatDate.toDateString() === yesterday.toDateString()) {
+        groupKey = "Yesterday";
+      } else if (chatDate > lastWeek) {
+        groupKey = "Last 7 Days";
+      } else {
+        groupKey = chatDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+      }
+
+      if (!groups[groupKey]) {
+        groups[groupKey] = [];
+      }
+      groups[groupKey].push(chat);
+    });
+
+    return groups;
+  };
 
   const handleSignOut = async () => {
     await signOut();
     if (onNavigate) {
       onNavigate("landing");
     }
+  };
+
+  // Handle search in chat messages
+  const handleSearch = (query) => {
+    setSearchQuery(query);
+    
+    if (!query.trim()) {
+      setSearchResults([]);
+      return;
+    }
+
+    // Filter messages that contain the search query (case-insensitive)
+    const results = messages.filter((msg) =>
+      msg.text.toLowerCase().includes(query.toLowerCase())
+    );
+    
+    setSearchResults(results.map(msg => msg.id));
+  };
+
+  // Highlight search text in message
+  const highlightSearchText = (text, query) => {
+    if (!query.trim()) return text;
+    
+    const parts = text.split(new RegExp(`(${query})`, 'gi'));
+    return parts.map((part, index) => 
+      part.toLowerCase() === query.toLowerCase() 
+        ? <mark key={index} className="bg-yellow-300 text-gray-900">{part}</mark>
+        : part
+    );
   };
 
   const currentQuestion =
@@ -824,20 +911,51 @@ function ChatPage({ onNavigate }) {
     <div className="h-screen bg-white flex overflow-hidden">
       {/* Expandable Left Sidebar - ChatGPT Style with Red Theme */}
       <div
-        className={`bg-gradient-to-b from-red-900 via-red-800 to-red-900 flex flex-col transition-all duration-300 ease-in-out ${
+        className={`fixed inset-y-0 left-0 z-50 bg-gradient-to-b from-red-900 via-red-800 to-red-900 flex flex-col transition-all duration-300 ease-in-out ${
           sidebarOpen ? "w-64" : "w-16"
         }`}
       >
         {/* Sidebar Header */}
-        <div className="p-2">
+        <div className="p-2 space-y-2 flex-shrink-0">
           <button
             onClick={handleNewChat}
-            className="flex items-center justify-center w-full p-3 border border-red-700 hover:bg-red-800 rounded-lg transition-colors"
+            className={`flex items-center w-full p-3 border border-red-700 hover:bg-red-800 rounded-lg transition-colors ${
+              sidebarOpen ? "justify-start" : "justify-center"
+            }`}
             title="New Chat"
           >
-            <div className="flex items-center gap-3 min-w-0">
+            <svg
+              className="w-5 h-5 text-white flex-shrink-0"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 4v16m8-8H4"
+              />
+            </svg>
+            {sidebarOpen && (
+              <span className="text-sm text-white ml-3">
+                New chat
+              </span>
+            )}
+          </button>
+
+          {/* Search in Chat */}
+          {sidebarOpen ? (
+            <div className="relative">
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => handleSearch(e.target.value)}
+                placeholder="Search in chat..."
+                className="w-full p-2.5 pl-10 bg-red-800/30 border border-red-700 rounded-lg text-sm text-white placeholder-red-300 focus:outline-none focus:ring-2 focus:ring-red-600 focus:border-transparent"
+              />
               <svg
-                className="w-5 h-5 text-white flex-shrink-0"
+                className="w-4 h-4 text-red-300 absolute left-3 top-1/2 -translate-y-1/2"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -846,175 +964,198 @@ function ChatPage({ onNavigate }) {
                   strokeLinecap="round"
                   strokeLinejoin="round"
                   strokeWidth={2}
-                  d="M12 4v16m8-8H4"
+                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
                 />
               </svg>
-              {sidebarOpen && (
-                <span className="text-sm text-white whitespace-nowrap">
-                  New chat
-                </span>
+              {searchQuery && (
+                <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-2">
+                  {searchResults.length > 0 && (
+                    <span className="text-xs text-red-200 bg-red-800 px-2 py-0.5 rounded">
+                      {searchResults.length}
+                    </span>
+                  )}
+                  <button
+                    onClick={() => handleSearch("")}
+                    className="text-red-300 hover:text-white"
+                    title="Clear search"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
               )}
             </div>
+          ) : (
+            <button
+              onClick={() => setSidebarOpen(true)}
+              className="flex items-center justify-center w-full p-3 hover:bg-red-800 rounded-lg transition-colors"
+              title="Search in Chat"
+            >
+              <svg
+                className="w-5 h-5 text-red-300 flex-shrink-0"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                />
+              </svg>
+            </button>
+          )}
+
+          {/* History Button */}
+          <button
+            onClick={() => onNavigate && onNavigate("history")}
+            className={`flex items-center w-full p-3 hover:bg-red-800 rounded-lg transition-colors ${
+              sidebarOpen ? "justify-start" : "justify-center"
+            }`}
+            title="History"
+          >
+            <svg
+              className="w-5 h-5 text-red-300 flex-shrink-0"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+              />
+            </svg>
+            {sidebarOpen && (
+              <span className="text-sm text-white ml-3">
+                History
+              </span>
+            )}
           </button>
         </div>
 
-        {/* Navigation Items */}
+        {/* Scrollable Middle Section */}
         <div className="flex-1 overflow-y-auto p-2">
           <div className="space-y-1">
-            {/* My Notes */}
-            <button
-              onClick={() => onNavigate && onNavigate("notes")}
-              className="flex items-center gap-3 w-full p-3 hover:bg-red-800 rounded-lg transition-colors text-left"
-              title="My Notes"
-            >
-              <svg
-                className="w-5 h-5 text-red-300 shrink-0"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"
-                />
-              </svg>
-              {sidebarOpen && (
-                <span className="text-sm text-red-100 truncate flex-1">
-                  My Notes
-                </span>
-              )}
-            </button>
-
-            {/* Recent Chats */}
-            {sidebarOpen && (
-              <>
-                <button className="flex items-center gap-3 w-full p-3 hover:bg-red-800 rounded-lg transition-colors text-left group">
-                  <svg
-                    className="w-4 h-4 text-red-300 flex-shrink-0"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
-                    />
-                  </svg>
-                  <span className="text-sm text-red-100 truncate flex-1">
-                    Mathematics lesson
-                  </span>
-                </button>
-                <button className="flex items-center gap-3 w-full p-3 hover:bg-red-800 rounded-lg transition-colors text-left group">
-                  <svg
-                    className="w-4 h-4 text-red-300 flex-shrink-0"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
-                    />
-                  </svg>
-                  <span className="text-sm text-red-100 truncate flex-1">
-                    Physics concepts
-                  </span>
-                </button>
-              </>
-            )}
+            {/* Future content can go here */}
           </div>
         </div>
 
-        {/* Bottom Section */}
-        <div className="border-t border-red-700 p-2 space-y-1">
+        {/* Fixed Bottom Section */}
+        <div className="border-t border-red-700 p-2 space-y-1 flex-shrink-0">
+          {/* My Notes */}
+          <button
+            onClick={() => onNavigate && onNavigate("notes")}
+            className={`flex items-center w-full p-3 hover:bg-red-800 rounded-lg transition-colors ${
+              sidebarOpen ? "justify-start" : "justify-center"
+            }`}
+            title="My Notes"
+          >
+            <svg
+              className="w-5 h-5 text-red-300 flex-shrink-0"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"
+              />
+            </svg>
+            {sidebarOpen && (
+              <span className="text-sm text-red-100 ml-3">
+                My Notes
+              </span>
+            )}
+          </button>
+
+          {/* Dashboard */}
+          <button
+            onClick={() => onNavigate && onNavigate("dashboard")}
+            className={`flex items-center w-full p-3 hover:bg-red-800 rounded-lg transition-colors ${
+              sidebarOpen ? "justify-start" : "justify-center"
+            }`}
+            title="Dashboard"
+          >
+            <svg
+              className="w-5 h-5 text-red-300 flex-shrink-0"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"
+              />
+            </svg>
+            {sidebarOpen && (
+              <span className="text-sm text-red-100 ml-3">
+                Dashboard
+              </span>
+            )}
+          </button>
+
           {/* Toggle Sidebar */}
           <button
             onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="flex items-center justify-center w-full p-3 hover:bg-red-800 rounded-lg transition-colors"
+            className={`flex items-center w-full p-3 hover:bg-red-800 rounded-lg transition-colors ${
+              sidebarOpen ? "justify-start" : "justify-center"
+            }`}
             title={sidebarOpen ? "Close sidebar" : "Open sidebar"}
           >
-            <div className="flex items-center gap-3 min-w-0">
-              <svg
-                className="w-5 h-5 text-red-300 flex-shrink-0"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d={
-                    sidebarOpen
-                      ? "M11 19l-7-7 7-7m8 14l-7-7 7-7"
-                      : "M13 5l7 7-7 7M5 5l7 7-7 7"
-                  }
-                />
-              </svg>
-              {sidebarOpen && (
-                <span className="text-sm text-red-100 whitespace-nowrap">
-                  Close sidebar
-                </span>
-              )}
-            </div>
-          </button>
-
-          {/* Home */}
-          <button
-            onClick={() => onNavigate && onNavigate("dashboard")}
-            className="flex items-center justify-center w-full p-3 hover:bg-red-800 rounded-lg transition-colors"
-            title="Home"
-          >
-            <div className="flex items-center gap-3 min-w-0">
-              <svg
-                className="w-5 h-5 text-red-300 flex-shrink-0"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"
-                />
-              </svg>
-              {sidebarOpen && (
-                <span className="text-sm text-red-100 whitespace-nowrap">
-                  Home
-                </span>
-              )}
-            </div>
+            <svg
+              className="w-5 h-5 text-red-300 flex-shrink-0"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d={
+                  sidebarOpen
+                    ? "M11 19l-7-7 7-7m8 14l-7-7 7-7"
+                    : "M13 5l7 7-7 7M5 5l7 7-7 7"
+                }
+              />
+            </svg>
+            {sidebarOpen && (
+              <span className="text-sm text-red-100 ml-3">
+                Close sidebar
+              </span>
+            )}
           </button>
 
           {/* User Profile */}
           {user && (
-            <button className="flex items-center justify-center w-full p-3 hover:bg-red-800 rounded-lg overflow-hidden transition-colors">
-              <div className="flex items-center gap-3 min-w-0">
-                <Avatar
-                  src={null}
-                  alt={`${
-                    user.name || user.email?.split("@")[0] || "User"
-                  }'s avatar`}
-                  size="w-7 h-7"
-                  fallbackText={(user.name ||
-                    user.email?.split("@")[0] ||
-                    "U")[0].toUpperCase()}
-                />
-                {sidebarOpen && (
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-white truncate">
-                      {user.name || user.email?.split("@")[0]}
-                    </p>
-                  </div>
-                )}
-              </div>
+            <button className={`flex items-center w-full p-3 hover:bg-red-800 rounded-lg overflow-hidden transition-colors ${
+              sidebarOpen ? "justify-start" : "justify-center"
+            }`}>
+              <Avatar
+                src={null}
+                alt={`${
+                  user.name || user.email?.split("@")[0] || "User"
+                }'s avatar`}
+                size="w-7 h-7"
+                fallbackText={(user.name ||
+                  user.email?.split("@")[0] ||
+                  "U")[0].toUpperCase()}
+              />
+              {sidebarOpen && (
+                <div className="ml-3 min-w-0">
+                  <p className="text-sm font-medium text-white truncate">
+                    {user.name || user.email?.split("@")[0]}
+                  </p>
+                </div>
+              )}
             </button>
           )}
         </div>
@@ -1029,6 +1170,7 @@ function ChatPage({ onNavigate }) {
                 sidebarOpen ? "256px" : "64px"
               } - ${examPanelWidth}px)`
             : `calc(100% - ${sidebarOpen ? "256px" : "64px"})`,
+          marginLeft: sidebarOpen ? "256px" : "64px",
         }}
       >
         {/* Chat Header */}
@@ -1046,12 +1188,27 @@ function ChatPage({ onNavigate }) {
         {/* Chat Messages */}
         <div className="flex-1 overflow-y-auto bg-white">
           <div className="max-w-3xl mx-auto px-6 py-6 space-y-6">
-            {messages.map(({ id, from, text }) => (
+            {/* Search Results Info */}
+            {searchQuery && (
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 text-sm">
+                {searchResults.length > 0 ? (
+                  <p className="text-yellow-800">
+                    Found <strong>{searchResults.length}</strong> message{searchResults.length !== 1 ? 's' : ''} matching "{searchQuery}"
+                  </p>
+                ) : (
+                  <p className="text-yellow-800">No messages found matching "{searchQuery}"</p>
+                )}
+              </div>
+            )}
+
+            {messages
+              .filter((msg) => !searchQuery || searchResults.includes(msg.id))
+              .map(({ id, from, text }) => (
               <div
                 key={id}
                 className={`flex ${
                   from === "user" ? "justify-end" : "justify-start"
-                }`}
+                } ${searchResults.includes(id) ? 'ring-2 ring-yellow-400 rounded-2xl' : ''}`}
               >
                 <div className="flex flex-col gap-2 max-w-[80%]">
                   {editingMessageId === id ? (
@@ -1144,7 +1301,10 @@ function ChatPage({ onNavigate }) {
                                         key={iIdx}
                                         className="text-gray-800 leading-relaxed"
                                       >
-                                        {renderFormattedText(item.text)}
+                                        {searchQuery 
+                                          ? highlightSearchText(item.text, searchQuery)
+                                          : renderFormattedText(item.text)
+                                        }
                                       </p>
                                     );
                                   })}
@@ -1154,7 +1314,9 @@ function ChatPage({ onNavigate }) {
                           </div>
                         ) : (
                           // Simple user message
-                          <p className="text-sm leading-relaxed">{text}</p>
+                          <p className="text-sm leading-relaxed">
+                            {searchQuery ? highlightSearchText(text, searchQuery) : text}
+                          </p>
                         )}
                       </div>
 
