@@ -23,7 +23,8 @@ class ChatService:
         self,
         message: str,
         user_id: Optional[str] = None,
-        context: Optional[str] = None
+        context: Optional[str] = None,
+        chat_id: Optional[str] = None
     ) -> Dict[str, Any]:
         """
         Send a message and get AI response.
@@ -32,17 +33,71 @@ class ChatService:
             message: User message
             user_id: Optional user ID for context
             context: Optional additional context
+            chat_id: Optional chat ID to save conversation
             
         Returns:
-            Dictionary with AI response
+            Dictionary with AI response and chat info
         """
         try:
             response_text = self.ai_service.generate_response(message, context)
+            timestamp = datetime.now().isoformat()
+            
+            # Save the conversation to database if user_id is provided
+            if user_id:
+                # Create or update chat
+                if not chat_id:
+                    chat_id = f"chat_{generate_uuid()}"
+                    # Create new chat
+                    chat_data = {
+                        "user_id": user_id,
+                        "topic": message[:50],  # Use first 50 chars as topic
+                        "difficulty": "intermediate",
+                        "messages": [
+                            {
+                                "id": f"msg_{generate_uuid()}",
+                                "from_user": "user",
+                                "text": message,
+                                "timestamp": timestamp
+                            },
+                            {
+                                "id": f"msg_{generate_uuid()}",
+                                "from_user": "ai",
+                                "text": response_text,
+                                "timestamp": timestamp
+                            }
+                        ],
+                        "created_at": timestamp
+                    }
+                    await self.data_store.add_chat(chat_id, chat_data)
+                else:
+                    # Add messages to existing chat
+                    chat = await self.get_chat(chat_id)
+                    if chat:
+                        messages = chat.get("messages", [])
+                        messages.extend([
+                            {
+                                "id": f"msg_{generate_uuid()}",
+                                "from_user": "user",
+                                "text": message,
+                                "timestamp": timestamp
+                            },
+                            {
+                                "id": f"msg_{generate_uuid()}",
+                                "from_user": "ai",
+                                "text": response_text,
+                                "timestamp": timestamp
+                            }
+                        ])
+                        await self.data_store.update_chat(chat_id, {
+                            "messages": messages,
+                            "updated_at": timestamp
+                        })
             
             return {
                 "response": response_text,
-                "timestamp": datetime.now().isoformat(),
-                "user_id": user_id
+                "timestamp": timestamp,
+                "user_id": user_id,
+                "chat_id": chat_id
             }
         except Exception as e:
             logger.error(f"Send message error: {e}")

@@ -85,6 +85,9 @@ class MongoDataStore(BaseRepository):
     async def get_user_chats(self, user_id: str) -> List[Dict]:
         return await self.list("chats", {"user_id": user_id})
     
+    async def update_chat(self, chat_id: str, updates: Dict) -> Optional[Dict]:
+        return await self.update("chats", chat_id, updates)
+    
     # Exam methods
     async def add_exam(self, exam_id: str, exam_data: Dict) -> Dict:
         return await self.create("exams", exam_id, exam_data)

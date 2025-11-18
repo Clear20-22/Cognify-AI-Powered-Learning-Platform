@@ -13,13 +13,15 @@ class ChatRequest(BaseModel):
     message: str = Field(..., description="User message", min_length=1)
     user_id: Optional[str] = Field(None, description="User ID for context")
     context: Optional[str] = Field(None, description="Additional context")
+    chat_id: Optional[str] = Field(None, description="Chat ID to continue existing conversation")
     
     class Config:
         json_schema_extra = {
             "example": {
                 "message": "Explain quantum entanglement in simple terms",
                 "user_id": "user_abc123",
-                "context": "Previous topic: quantum mechanics basics"
+                "context": "Previous topic: quantum mechanics basics",
+                "chat_id": "chat_xyz789"
             }
         }
 
@@ -30,13 +32,15 @@ class ChatResponse(BaseModel):
     response: str = Field(..., description="AI response")
     timestamp: str = Field(..., description="Response timestamp")
     user_id: Optional[str] = None
+    chat_id: Optional[str] = Field(None, description="Chat ID for this conversation")
     
     class Config:
         json_schema_extra = {
             "example": {
                 "response": "Quantum entanglement is a phenomenon where...",
                 "timestamp": "2024-01-15T10:30:05.123Z",
-                "user_id": "user_abc123"
+                "user_id": "user_abc123",
+                "chat_id": "chat_xyz789"
             }
         }
 

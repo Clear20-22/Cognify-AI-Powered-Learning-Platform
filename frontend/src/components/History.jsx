@@ -1,5 +1,7 @@
-import { useState } from "react";
-import { useAuth } from "../hooks/useAuth.jsx";
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { useAuth, useUserId } from "../hooks/useAuth.jsx";
+import { apiService } from "../services/apiService";
 import Avatar from "./Avatar";
 import {
   ChatBubbleLeftRightIcon,
@@ -12,65 +14,56 @@ import {
 
 function History({ onNavigate }) {
   const { user, signOut } = useAuth();
+  const userId = useUserId();
+  const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [chats, setChats] = useState([]);
+  const [exams, setExams] = useState([]);
 
-  const [historyData] = useState({
-    questions: [
-      {
-        id: 1,
-        title:
-          "What is machine learning and how does it differ from traditional programming?",
-        date: "2024-01-15",
-      },
-      {
-        id: 2,
-        title: "Explain the concept of neural networks in deep learning",
-        date: "2024-01-14",
-      },
-      {
-        id: 3,
-        title:
-          "What are the key differences between supervised and unsupervised learning?",
-        date: "2024-01-13",
-      },
-      {
-        id: 4,
-        title: "How do you implement a binary search algorithm in Python?",
-        date: "2024-01-12",
-      },
-      {
-        id: 5,
-        title: "What is the time complexity of quicksort algorithm?",
-        date: "2024-01-11",
-      },
-    ],
-    exams: [
-      {
-        id: 1,
-        title: "Python Fundamentals Quiz",
-        score: "85%",
-        date: "2024-01-15",
-      },
-      {
-        id: 2,
-        title: "Data Structures and Algorithms Test",
-        score: "92%",
-        date: "2024-01-13",
-      },
-      {
-        id: 3,
-        title: "Machine Learning Basics",
-        score: "78%",
-        date: "2024-01-10",
-      },
-      {
-        id: 4,
-        title: "JavaScript ES6 Features",
-        score: "88%",
-        date: "2024-01-08",
-      },
-    ],
-  });
+  useEffect(() => {
+    const loadHistory = async () => {
+      if (!userId) return;
+      
+      try {
+        setLoading(true);
+        
+        // Fetch user's chats
+        const chatsData = await apiService.getUserChats(userId);
+        setChats(chatsData.chats || []);
+        
+        // Fetch user's exams
+        const examsData = await apiService.getUserExams(userId);
+        setExams(examsData.exams || []);
+      } catch (error) {
+        console.error("Failed to load history:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadHistory();
+  }, [userId]);
+
+  const formatDate = (dateString) => {
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleDateString('en-US', { 
+        year: 'numeric', 
+        month: 'short', 
+        day: 'numeric' 
+      });
+    } catch {
+      return dateString;
+    }
+  };
+
+  const handleChatClick = (chat) => {
+    const chatId = chat.id || chat.chat_id;
+    if (chatId) {
+      navigate(`/chat/${chatId}`);
+    }
+  };
 
   const handleSignOut = async () => {
     await signOut();
@@ -192,58 +185,90 @@ function History({ onNavigate }) {
         {/* Content */}
         <main className="flex-1 overflow-y-auto p-6">
           <div className="max-w-4xl mx-auto space-y-8">
-            {/* Chat History */}
-            <div>
-              <div className="flex items-center space-x-3 mb-4">
-                <ChatBubbleLeftRightIcon className="w-6 h-6 text-red-600" />
-                <h3 className="text-xl font-semibold text-gray-900">
-                  Recent Questions
-                </h3>
+            {loading ? (
+              <div className="flex items-center justify-center py-12">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-600"></div>
               </div>
-              <div className="space-y-3">
-                {historyData.questions.map((question) => (
-                  <div
-                    key={question.id}
-                    className="p-4 bg-white border border-gray-200 rounded-xl hover:shadow-md transition-all cursor-pointer"
-                  >
-                    <div className="flex justify-between items-start">
-                      <p className="text-gray-900 flex-1">{question.title}</p>
-                      <span className="text-xs text-gray-500 ml-4">
-                        {question.date}
-                      </span>
-                    </div>
+            ) : (
+              <>
+                {/* Chat History */}
+                <div>
+                  <div className="flex items-center space-x-3 mb-4">
+                    <ChatBubbleLeftRightIcon className="w-6 h-6 text-red-600" />
+                    <h3 className="text-xl font-semibold text-gray-900">
+                      Recent Chats
+                    </h3>
                   </div>
-                ))}
-              </div>
-            </div>
+                  <div className="space-y-3">
+                    {chats.length === 0 ? (
+                      <div className="p-8 bg-white border border-gray-200 rounded-xl text-center">
+                        <p className="text-gray-500">No chat history yet. Start a conversation to see it here!</p>
+                      </div>
+                    ) : (
+                      chats.map((chat) => (
+                        <div
+                          key={chat.id || chat.chat_id}
+                          className="p-4 bg-white border border-gray-200 rounded-xl hover:shadow-md transition-all cursor-pointer"
+                          onClick={() => handleChatClick(chat)}
+                        >
+                          <div className="flex justify-between items-start">
+                            <div className="flex-1">
+                              <p className="text-gray-900 font-medium">{chat.topic || "Conversation"}</p>
+                              {chat.messages && chat.messages.length > 0 && (
+                                <p className="text-sm text-gray-600 mt-1 line-clamp-1">
+                                  {chat.messages[0].text || chat.messages[0].content}
+                                </p>
+                              )}
+                            </div>
+                            <span className="text-xs text-gray-500 ml-4">
+                              {formatDate(chat.created_at)}
+                            </span>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
 
-            {/* Exam History */}
-            <div>
-              <div className="flex items-center space-x-3 mb-4">
-                <AcademicCapIcon className="w-6 h-6 text-red-600" />
-                <h3 className="text-xl font-semibold text-gray-900">
-                  Completed Exams
-                </h3>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {historyData.exams.map((exam) => (
-                  <div
-                    key={exam.id}
-                    className="p-5 bg-white border border-gray-200 rounded-xl hover:shadow-md transition-all cursor-pointer"
-                  >
-                    <h4 className="font-semibold text-gray-900 mb-2">
-                      {exam.title}
-                    </h4>
-                    <div className="flex justify-between items-center text-sm">
-                      <span className="text-green-600 font-medium">
-                        {exam.score}
-                      </span>
-                      <span className="text-gray-500">{exam.date}</span>
-                    </div>
+                {/* Exam History */}
+                <div>
+                  <div className="flex items-center space-x-3 mb-4">
+                    <AcademicCapIcon className="w-6 h-6 text-red-600" />
+                    <h3 className="text-xl font-semibold text-gray-900">
+                      Completed Exams
+                    </h3>
                   </div>
-                ))}
-              </div>
-            </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {exams.length === 0 ? (
+                      <div className="col-span-2 p-8 bg-white border border-gray-200 rounded-xl text-center">
+                        <p className="text-gray-500">No exam history yet. Take an exam to see results here!</p>
+                      </div>
+                    ) : (
+                      exams.map((exam) => (
+                        <div
+                          key={exam.id || exam.exam_id}
+                          className="p-4 bg-white border border-gray-200 rounded-xl hover:shadow-md transition-all cursor-pointer"
+                        >
+                          <div className="flex justify-between items-start mb-2">
+                            <h4 className="font-semibold text-gray-900">
+                              {exam.title || exam.topic || "Exam"}
+                            </h4>
+                            {exam.score !== undefined && (
+                              <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-semibold">
+                                {exam.score}%
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-xs text-gray-500">
+                            {formatDate(exam.created_at || exam.date)}
+                          </p>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              </>
+            )}
           </div>
         </main>
       </div>

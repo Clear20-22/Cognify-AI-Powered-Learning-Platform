@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useParams } from "react-router-dom";
 import ChatIcon from "../assets/chat.svg";
 import { apiService } from "../services/apiService";
 import { useUserId, useAuth } from "../hooks/useAuth.jsx";
@@ -132,6 +133,7 @@ const renderFormattedText = (text) => {
 };
 
 function ChatPage({ onNavigate }) {
+  const { chatId } = useParams(); // Get chatId from URL
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [showNewChatModal, setShowNewChatModal] = useState(false);
@@ -315,6 +317,52 @@ function ChatPage({ onNavigate }) {
     // await createDemoExam();
   };
 
+  // Load chat from URL parameter
+  useEffect(() => {
+    const loadChatFromUrl = async () => {
+      if (chatId && userId) {
+        try {
+          console.log("Loading chat with ID:", chatId);
+          setChatLoading(true);
+          const chatData = await apiService.getChat(chatId);
+          
+          console.log("Loaded chat data:", chatData);
+          
+          if (chatData) {
+            setCurrentChat({
+              chat_id: chatData.id,
+              title: chatData.topic,
+              subject: chatData.topic,
+              chat_data: {
+                messages: chatData.messages || [],
+                metadata: {
+                  subject: chatData.topic,
+                  difficulty: chatData.difficulty
+                }
+              }
+            });
+            
+            // Convert messages to display format
+            const displayMessages = (chatData.messages || []).map((msg, idx) => ({
+              id: msg.id || `msg_${idx}`,
+              from: msg.from_user === "user" || msg.role === "user" ? "user" : "ai",
+              text: msg.text || msg.content || "",
+            }));
+            
+            console.log("Display messages:", displayMessages);
+            setMessages(displayMessages);
+          }
+        } catch (error) {
+          console.error("Failed to load chat:", error);
+        } finally {
+          setChatLoading(false);
+        }
+      }
+    };
+
+    loadChatFromUrl();
+  }, [chatId, userId]);
+
   // Load initial content when component mounts
   useEffect(() => {
     const loadChatExams = async () => {
@@ -442,14 +490,27 @@ function ChatPage({ onNavigate }) {
     setIsLoading(true);
 
     try {
-      // Get AI response
-      const aiResponse = await apiService.sendMessage(currentInput, userId);
+      // Get AI response with chat_id for persistence
+      const result = await apiService.sendMessage(
+        currentInput, 
+        userId, 
+        null, 
+        currentChat?.chat_id
+      );
+
+      // Update chat_id if this was a new conversation
+      if (result.chat_id && !currentChat?.chat_id) {
+        setCurrentChat((prev) => ({
+          ...prev,
+          chat_id: result.chat_id,
+        }));
+      }
 
       // Add AI response
       const aiMessage = {
         id: Date.now() + 1,
         from: "ai",
-        text: aiResponse,
+        text: result.response,
       };
 
       setMessages((prev) => [...prev, aiMessage]);
@@ -527,12 +588,25 @@ function ChatPage({ onNavigate }) {
     setIsLoading(true);
 
     try {
-      const aiResponse = await apiService.sendMessage(editText.trim(), userId);
+      const result = await apiService.sendMessage(
+        editText.trim(), 
+        userId, 
+        null, 
+        currentChat?.chat_id
+      );
+
+      // Update chat_id if needed
+      if (result.chat_id && !currentChat?.chat_id) {
+        setCurrentChat((prev) => ({
+          ...prev,
+          chat_id: result.chat_id,
+        }));
+      }
 
       const aiMessage = {
         id: Date.now(),
         from: "ai",
-        text: aiResponse,
+        text: result.response,
       };
 
       setMessages((prev) => [...prev, aiMessage]);

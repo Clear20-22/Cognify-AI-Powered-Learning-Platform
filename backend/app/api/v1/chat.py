@@ -29,6 +29,7 @@ async def send_message(
     Send a message and get an AI response.
     
     This is the main chat endpoint for conversational learning.
+    Automatically saves conversation history if user_id is provided.
     """
     try:
         if not request.message.strip():
@@ -42,7 +43,8 @@ async def send_message(
         result = await chat_service.send_message(
             message=request.message,
             user_id=request.user_id,
-            context=request.context
+            context=request.context,
+            chat_id=request.chat_id if hasattr(request, 'chat_id') else None
         )
         
         return ChatResponse(**result)
@@ -113,7 +115,12 @@ async def get_chat(
         )
     
     # Convert messages to response format
-    messages = [MessageResponse(**msg) for msg in chat.get("messages", [])]
+    messages = []
+    for msg in chat.get("messages", []):
+        # Handle both formats: {from_user, text} and {role, content}
+        role = msg.get("role") or ("user" if msg.get("from_user") == "user" else "assistant")
+        content = msg.get("content") or msg.get("text", "")
+        messages.append(MessageResponse(role=role, content=content))
     
     return ChatDetailResponse(
         id=chat.get("id", chat_id),

@@ -90,6 +90,16 @@ function AppContent() {
           }
         />
         <Route
+          path="/chat/:chatId"
+          element={
+            user ? (
+              <ChatPage onNavigate={handleNavigate} />
+            ) : (
+              <Navigate to="/" replace />
+            )
+          }
+        />
+        <Route
           path="/notes"
           element={
             user ? (

@@ -4,7 +4,7 @@ class ApiService {
     this.baseURL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
   }
 
-  async sendMessage(message, userId, context = null) {
+  async sendMessage(message, userId, context = null, chatId = null) {
     try {
       const response = await fetch(`${this.baseURL}/api/chat`, {
         method: 'POST',
@@ -14,7 +14,8 @@ class ApiService {
         body: JSON.stringify({
           message,
           user_id: userId,
-          context: context
+          context: context,
+          chat_id: chatId
         })
       });
 
@@ -23,7 +24,7 @@ class ApiService {
       }
 
       const data = await response.json();
-      return data.response;
+      return data;
     } catch (error) {
       console.error('API Error:', error);
       throw new Error(`Failed to get AI response: ${error.message}`);
@@ -83,7 +84,7 @@ class ApiService {
 
   async getUserChats(userId) {
     try {
-      const response = await fetch(`${this.baseURL}/api/chats/user/${userId}`, {
+      const response = await fetch(`${this.baseURL}/api/users/${userId}/chats`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json'
@@ -174,7 +175,7 @@ class ApiService {
 
   async getUserExams(userId, status = null) {
     try {
-      let url = `${this.baseURL}/api/exams/user/${userId}`;
+      let url = `${this.baseURL}/api/exams/users/${userId}`;
       if (status) {
         url += `?status=${status}`;
       }
@@ -187,13 +188,18 @@ class ApiService {
       });
 
       if (!response.ok) {
+        // Return empty array if endpoint doesn't exist yet
+        if (response.status === 404) {
+          return { exams: [] };
+        }
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
       return await response.json();
     } catch (error) {
       console.error('API Error:', error);
-      throw new Error(`Failed to get user exams: ${error.message}`);
+      // Return empty array instead of throwing
+      return { exams: [] };
     }
   }
 
