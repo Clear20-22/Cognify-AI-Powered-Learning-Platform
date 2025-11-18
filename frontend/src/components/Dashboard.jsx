@@ -204,7 +204,7 @@ function Dashboard({ onNavigate }) {
   }) => (
     <button
       onClick={onClick}
-      className="bg-white rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all transform hover:-translate-y-1 border border-gray-100 text-left w-full group"
+      className="bg-white rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all transform hover:-translate-y-1 border border-gray-100 text-left min-w-[280px] flex-shrink-0 group"
     >
       <div
         className={`w-14 h-14 bg-gradient-to-br ${color} rounded-xl flex items-center justify-center mb-4 shadow-lg group-hover:scale-110 transition-transform`}
@@ -766,7 +766,7 @@ function Dashboard({ onNavigate }) {
             <h2 className="text-2xl font-bold text-gray-800 mb-6">
               Quick Actions
             </h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="flex gap-6 overflow-x-auto pb-4 scrollbar-hide">
               <QuickActionCard
                 icon={PlusIcon}
                 title="Start New Chat"
@@ -787,6 +787,13 @@ function Dashboard({ onNavigate }) {
                 description="Upload PDFs and presentations to study"
                 color="from-purple-500 to-purple-600"
                 onClick={() => onNavigate && onNavigate("documents")}
+              />
+              <QuickActionCard
+                icon={AcademicCapIcon}
+                title="Take Practice Test"
+                description="Test your knowledge with AI-generated exams"
+                color="from-green-500 to-green-600"
+                onClick={() => onNavigate && onNavigate("chat")}
               />
               <QuickActionCard
                 icon={ChartBarIcon}
