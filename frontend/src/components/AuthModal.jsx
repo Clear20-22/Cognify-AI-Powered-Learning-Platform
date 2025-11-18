@@ -162,8 +162,8 @@ function AuthModal({ onClose, onSuccess, initialMode = "signin" }) {
       className="fixed inset-0 bg-black/60 backdrop-blur-sm flex justify-center items-center z-50 p-4"
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
-      <div className="bg-gradient-to-br from-red-50 via-white to-gray-50 rounded-3xl max-w-5xl w-full overflow-hidden shadow-2xl">
-        <div className="grid md:grid-cols-2">
+      <div className="bg-gradient-to-br from-red-50 via-white to-gray-50 rounded-3xl max-w-5xl w-full max-h-[90vh] overflow-hidden shadow-2xl flex flex-col">
+        <div className="grid md:grid-cols-2 flex-1 overflow-hidden">
           {/* Left Side - Illustration/Branding */}
           <div className="hidden md:block bg-gradient-to-br from-red-600 to-red-800 p-12 relative overflow-hidden">
             {/* Abstract Background Graphics */}
@@ -173,7 +173,7 @@ function AuthModal({ onClose, onSuccess, initialMode = "signin" }) {
               <div className="absolute top-1/2 left-1/4 w-32 h-32 bg-orange-300 rounded-full blur-2xl"></div>
             </div>
 
-            <div className="relative z-10 h-full flex flex-col justify-between">
+            <div className="relative z-10 h-full flex flex-col justify-between overflow-y-auto">
               <div>
                 <div className="flex items-center space-x-3 mb-8">
                   <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center shadow-lg">
@@ -265,10 +265,10 @@ function AuthModal({ onClose, onSuccess, initialMode = "signin" }) {
           </div>
 
           {/* Right Side - Form */}
-          <div className="p-8 md:p-12 relative">
+          <div className="p-8 md:p-12 relative overflow-y-auto">
             <button
               onClick={onClose}
-              className="absolute top-6 right-6 p-2 hover:bg-red-100 rounded-lg transition-colors"
+              className="absolute top-6 right-6 p-2 hover:bg-red-100 rounded-lg transition-colors z-10"
               aria-label="Close"
             >
               <XMarkIcon className="w-6 h-6 text-gray-600" />
