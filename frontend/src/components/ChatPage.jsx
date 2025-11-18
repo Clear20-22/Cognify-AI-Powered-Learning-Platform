@@ -167,6 +167,9 @@ function ChatPage({ onNavigate }) {
   // Sidebar state
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
+  // Track saved notes (messageId -> noteId mapping)
+  const [savedNotes, setSavedNotes] = useState({});
+
   // Get real user ID
   const userId = useUserId();
   const { user, signOut } = useAuth();
@@ -544,24 +547,48 @@ function ChatPage({ onNavigate }) {
       });
   };
 
-  // Save AI response as note
+  // Save AI response as note or unsave if already saved
   const saveAsNote = async (text, messageId) => {
     try {
-      const result = await apiService.saveNote(
-        userId,
-        text,
-        currentChat?.chat_id || null,
-        null, // pdf_name - can be added later if PDF upload is implemented
-        [] // tags - can be added with a tag input UI
-      );
+      // Check if this message is already saved
+      if (savedNotes[messageId]) {
+        // Unsave - delete the note
+        await apiService.deleteNote(savedNotes[messageId]);
+        
+        // Remove from savedNotes state
+        setSavedNotes(prev => {
+          const updated = { ...prev };
+          delete updated[messageId];
+          return updated;
+        });
+        
+        alert("✅ Note removed successfully!");
+      } else {
+        // Save new note
+        const result = await apiService.saveNote(
+          userId,
+          text,
+          currentChat?.chat_id || null,
+          null, // pdf_name - can be added later if PDF upload is implemented
+          [] // tags - can be added with a tag input UI
+        );
 
-      if (result.success) {
-        // Show success feedback
-        alert("✅ Note saved successfully!");
+        // Check if result contains note_id or id to confirm success
+        if (result && (result.note_id || result.id)) {
+          // Track the saved note
+          setSavedNotes(prev => ({
+            ...prev,
+            [messageId]: result.note_id || result.id
+          }));
+          
+          alert("✅ Note saved successfully!");
+        } else {
+          throw new Error("Invalid response from server");
+        }
       }
     } catch (error) {
-      console.error("Failed to save note:", error);
-      alert("❌ Failed to save note. Please try again.");
+      console.error("Failed to save/unsave note:", error);
+      alert("❌ Failed to save/unsave note. Please try again.");
     }
   };
 
@@ -1160,12 +1187,18 @@ function ChatPage({ onNavigate }) {
                         {from === "ai" && (
                           <button
                             onClick={() => saveAsNote(text, id)}
-                            className="p-1.5 hover:bg-red-100 rounded-lg transition-colors group"
-                            title="Save as Note"
+                            className={`p-1.5 rounded-lg transition-colors group ${
+                              savedNotes[id] ? "bg-red-100" : "hover:bg-red-100"
+                            }`}
+                            title={savedNotes[id] ? "Remove from Notes" : "Save as Note"}
                           >
                             <svg
-                              className="w-4 h-4 text-red-500 group-hover:text-red-700"
-                              fill="none"
+                              className={`w-4 h-4 transition-colors ${
+                                savedNotes[id]
+                                  ? "text-red-600 fill-red-600"
+                                  : "text-red-500 group-hover:text-red-700"
+                              }`}
+                              fill={savedNotes[id] ? "currentColor" : "none"}
                               stroke="currentColor"
                               viewBox="0 0 24 24"
                             >

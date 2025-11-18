@@ -33,7 +33,8 @@ function Notes({ onNavigate }) {
       try {
         setLoading(true);
         const result = await apiService.getUserNotes(userId);
-        if (result.success) {
+        // API returns { user_id, total, notes: [...] }
+        if (result && result.notes) {
           setNotes(result.notes);
         }
       } catch (error) {
@@ -68,11 +69,13 @@ function Notes({ onNavigate }) {
       const result = await apiService.updateNote(noteId, {
         content: editContent,
       });
-      if (result.success) {
+      // API returns the updated note directly
+      if (result && result.id) {
         // Update local state
-        setNotes(notes.map((n) => (n.id === noteId ? result.note : n)));
+        setNotes(notes.map((n) => (n.id === noteId ? result : n)));
         setEditingNoteId(null);
         setEditContent("");
+        alert("✅ Note updated successfully!");
       }
     } catch (error) {
       console.error("Failed to update note:", error);
@@ -82,15 +85,15 @@ function Notes({ onNavigate }) {
 
   const deleteNote = async (noteId) => {
     try {
-      const result = await apiService.deleteNote(noteId);
-      if (result.success) {
-        // Remove from local state
-        setNotes(notes.filter((n) => n.id !== noteId));
-        setDeleteConfirm(null);
-        if (selectedNote?.id === noteId) {
-          setSelectedNote(null);
-        }
+      await apiService.deleteNote(noteId);
+      // Delete returns 204 No Content, so if no error is thrown, it succeeded
+      // Remove from local state
+      setNotes(notes.filter((n) => n.id !== noteId));
+      setDeleteConfirm(null);
+      if (selectedNote?.id === noteId) {
+        setSelectedNote(null);
       }
+      alert("✅ Note deleted successfully!");
     } catch (error) {
       console.error("Failed to delete note:", error);
       alert("❌ Failed to delete note. Please try again.");

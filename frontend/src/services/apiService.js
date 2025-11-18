@@ -391,7 +391,8 @@ class ApiService {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
-      return await response.json();
+      // DELETE returns 204 No Content, so don't try to parse JSON
+      return { success: true };
     } catch (error) {
       console.error('API Error:', error);
       throw new Error(`Failed to delete note: ${error.message}`);
