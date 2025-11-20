@@ -721,6 +721,16 @@ function Dashboard({ onNavigate }) {
               {sidebarOpen && <span>Documents</span>}
             </button>
             <button
+              onClick={() => onNavigate && onNavigate("practicetest")}
+              className={`w-full flex items-center hover:bg-gray-100 text-gray-700 rounded-xl font-medium transition-colors ${
+                sidebarOpen ? "px-4 py-3 space-x-3" : "p-3 justify-center"
+              }`}
+              title="Practice Tests"
+            >
+              <AcademicCapIcon className="w-5 h-5 flex-shrink-0" />
+              {sidebarOpen && <span>Practice Tests</span>}
+            </button>
+            <button
               onClick={() => onNavigate && onNavigate("performance")}
               className={`w-full flex items-center hover:bg-gray-100 text-gray-700 rounded-xl font-medium transition-colors ${
                 sidebarOpen ? "px-4 py-3 space-x-3" : "p-3 justify-center"
@@ -729,16 +739,6 @@ function Dashboard({ onNavigate }) {
             >
               <TrophyIcon className="w-5 h-5 flex-shrink-0" />
               {sidebarOpen && <span>Performance</span>}
-            </button>
-            <button
-              onClick={() => onNavigate && onNavigate("history")}
-              className={`w-full flex items-center hover:bg-gray-100 text-gray-700 rounded-xl font-medium transition-colors ${
-                sidebarOpen ? "px-4 py-3 space-x-3" : "p-3 justify-center"
-              }`}
-              title="History"
-            >
-              <ClockIcon className="w-5 h-5 flex-shrink-0" />
-              {sidebarOpen && <span>History</span>}
             </button>
           </nav>
 

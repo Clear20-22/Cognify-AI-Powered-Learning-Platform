@@ -261,6 +261,16 @@ function Performance({ onNavigate }) {
               {sidebarOpen && <span>Documents</span>}
             </button>
             <button
+              onClick={() => onNavigate && onNavigate("practicetest")}
+              className={`w-full flex items-center px-4 py-3 text-gray-700 hover:bg-gray-100 rounded-xl font-medium transition-colors ${
+                sidebarOpen ? "space-x-3" : "justify-center"
+              }`}
+              title="Practice Tests"
+            >
+              <AcademicCapIcon className="w-5 h-5 flex-shrink-0" />
+              {sidebarOpen && <span>Practice Tests</span>}
+            </button>
+            <button
               className={`w-full flex items-center bg-red-50 text-red-600 rounded-xl font-medium ${
                 sidebarOpen ? "px-4 py-3 space-x-3" : "p-3 justify-center"
               }`}

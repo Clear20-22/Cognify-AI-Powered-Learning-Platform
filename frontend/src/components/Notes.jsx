@@ -210,13 +210,23 @@ function Notes({ onNavigate }) {
               {sidebarOpen && <span>Documents</span>}
             </button>
             <button
+              onClick={() => onNavigate && onNavigate("practicetest")}
+              className={`w-full flex items-center px-4 py-3 text-red-100 hover:bg-red-700 rounded-xl font-medium transition-colors ${
+                sidebarOpen ? "space-x-3" : "justify-center"
+              }`}
+              title="Practice Tests"
+            >
+              <AcademicCapIcon className="w-5 h-5 flex-shrink-0" />
+              {sidebarOpen && <span>Practice Tests</span>}
+            </button>
+            <button
               onClick={() => onNavigate && onNavigate("performance")}
               className={`w-full flex items-center px-4 py-3 text-red-100 hover:bg-red-700 rounded-xl font-medium transition-colors ${
                 sidebarOpen ? "space-x-3" : "justify-center"
               }`}
               title="Performance"
             >
-              <AcademicCapIcon className="w-5 h-5 flex-shrink-0" />
+              <ChartBarIcon className="w-5 h-5 flex-shrink-0" />
               {sidebarOpen && <span>Performance</span>}
             </button>
           </nav>
