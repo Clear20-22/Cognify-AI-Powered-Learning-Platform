@@ -341,7 +341,7 @@ class ApiService {
   async getNote(noteId) {
     try {
       const response = await fetch(`${this.baseURL}/api/notes/${noteId}`, {
-        method: 'GET',
+        method: 'GET', 
         headers: {
           'Content-Type': 'application/json'
         }
