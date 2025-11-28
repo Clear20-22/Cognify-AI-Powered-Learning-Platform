@@ -95,6 +95,16 @@ class Database:
             await db.notes.create_index([("user_id", 1), ("created_at", -1)])  # Compound index for queries
             logger.info("✅ Created indexes for 'notes' collection")
             
+            # Create quiz_attempts collection with indexes
+            if 'quiz_attempts' not in await db.list_collection_names():
+                await db.create_collection('quiz_attempts')
+                logger.info("✅ Created 'quiz_attempts' collection")
+            
+            await db.quiz_attempts.create_index("user_id")
+            await db.quiz_attempts.create_index("document_id")
+            await db.quiz_attempts.create_index([("document_id", 1), ("user_id", 1), ("created_at", -1)])  # Compound index for latest attempt queries
+            logger.info("✅ Created indexes for 'quiz_attempts' collection")
+            
         except Exception as e:
             logger.warning(f"⚠️  Error initializing collections: {e}")
     

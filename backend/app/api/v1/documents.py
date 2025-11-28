@@ -7,6 +7,8 @@ from fastapi import APIRouter, Depends, UploadFile, File, HTTPException, status,
 from fastapi.responses import FileResponse, Response
 import logging
 import os
+import uuid
+from datetime import datetime
 
 from app.api.deps import get_document_service, get_ai_service, get_current_user
 from app.schemas.document import (
@@ -16,8 +18,11 @@ from app.schemas.document import (
     DocumentProcessRequest,
     DocumentProcessResponse
 )
+from app.schemas.quiz_attempt import QuizSubmitRequest, QuizAttemptResponse
 from app.services.document_service import DocumentService
 from app.services.ai_service import AIService
+from app.models.quiz_attempt import QuizAttempt
+from app.database import Database
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/documents")
@@ -286,9 +291,10 @@ async def process_document(
             result = {"notes": notes}
             
         elif request.action == "generate_quiz":
+            # Use first 2 chunks for quiz generation
             text = "\n\n".join(chunks[:2])
-            # Reuse exam generation logic
-            result = {"message": "Quiz generation not yet implemented"}
+            questions = await ai_service.generate_quiz_from_text(text, num_questions=5)
+            result = {"questions": questions}
             
         elif request.action == "summarize":
             text = "\n\n".join(chunks[:3])
@@ -311,4 +317,127 @@ async def process_document(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to process document: {str(e)}"
+        )
+
+
+@router.post("/{doc_id}/quiz/submit", response_model=QuizAttemptResponse)
+async def submit_quiz(
+    doc_id: str,
+    request: QuizSubmitRequest,
+    current_user: Optional[Dict[str, Any]] = Depends(get_current_user),
+    doc_service: DocumentService = Depends(get_document_service)
+):
+    """
+    Submit quiz answers and save the attempt.
+    
+    - **doc_id**: Document ID
+    - **questions**: Quiz questions with correct answers
+    - **user_answers**: User's selected answers
+    """
+    if not current_user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authentication required"
+        )
+    
+    try:
+        # Verify document belongs to user
+        document = await doc_service.get_document(doc_id, current_user["id"])
+        if not document:
+            raise HTTPException(status_code=404, detail="Document not found")
+        
+        # Calculate score
+        correct = 0
+        total = len(request.questions)
+        
+        # Convert user_answers keys to strings for consistency
+        user_answers_dict = {str(k): v for k, v in request.user_answers.items()}
+        
+        for idx, question in enumerate(request.questions):
+            user_answer = user_answers_dict.get(str(idx))
+            if user_answer == question.get("correct"):
+                correct += 1
+        
+        score = {
+            "correct": correct,
+            "total": total,
+            "percentage": round((correct / total * 100) if total > 0 else 0)
+        }
+        
+        logger.info(f"Quiz submission - User: {current_user['id']}, Doc: {doc_id}, Score: {score}")
+        
+        # Create quiz attempt
+        attempt_id = f"attempt_{uuid.uuid4().hex[:12]}"
+        quiz_attempt = QuizAttempt(
+            id=attempt_id,
+            user_id=current_user["id"],
+            document_id=doc_id,
+            questions=request.questions,
+            user_answers=user_answers_dict,  # Store as strings
+            score=score,
+            created_at=datetime.now()
+        )
+        
+        # Save to database
+        db = Database.get_db()
+        await db.quiz_attempts.insert_one(quiz_attempt.model_dump())
+        
+        logger.info(f"Quiz attempt saved: {attempt_id}")
+        
+        return QuizAttemptResponse(**quiz_attempt.model_dump())
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Submit quiz error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to submit quiz: {str(e)}"
+        )
+
+
+@router.get("/{doc_id}/quiz/latest", response_model=QuizAttemptResponse)
+async def get_latest_quiz_attempt(
+    doc_id: str,
+    current_user: Optional[Dict[str, Any]] = Depends(get_current_user),
+    doc_service: DocumentService = Depends(get_document_service)
+):
+    """
+    Get the latest quiz attempt for a document.
+    
+    - **doc_id**: Document ID
+    """
+    if not current_user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authentication required"
+        )
+    
+    try:
+        # Verify document belongs to user
+        document = await doc_service.get_document(doc_id, current_user["id"])
+        if not document:
+            raise HTTPException(status_code=404, detail="Document not found")
+        
+        # Get latest attempt
+        db = Database.get_db()
+        attempt_data = await db.quiz_attempts.find_one(
+            {"document_id": doc_id, "user_id": current_user["id"]},
+            sort=[("created_at", -1)]
+        )
+        
+        if not attempt_data:
+            logger.info(f"No quiz attempt found for doc: {doc_id}, user: {current_user['id']}")
+            raise HTTPException(status_code=404, detail="No quiz attempts found")
+        
+        logger.info(f"Retrieved quiz attempt: {attempt_data.get('id')} for doc: {doc_id}")
+        logger.info(f"Attempt has {len(attempt_data.get('questions', []))} questions and {len(attempt_data.get('user_answers', {}))} answers")
+        
+        return QuizAttemptResponse(**attempt_data)
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Get quiz attempt error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to retrieve quiz attempt: {str(e)}"
         )

@@ -223,7 +223,6 @@ class DocumentService:
                     print(f"Cleaned up temp file: {temp_file_path}")
                 except Exception as cleanup_error:
                     print(f"Warning: Could not delete temp file {temp_file_path}: {cleanup_error}")
-            raise
     
     async def get_user_documents(self, user_id: str) -> List[Document]:
         """

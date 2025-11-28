@@ -386,3 +386,56 @@ Content:
 Summary:"""
         
         return self.generate_response(prompt)
+    
+    async def generate_quiz_from_text(self, text: str, num_questions: int = 5) -> List[Dict[str, Any]]:
+        """Generate quiz questions from document text."""
+        if not self.active_provider:
+            return self._demo_exam("the document", num_questions)
+        
+        prompt = f"""Based on the following content, create {num_questions} multiple-choice questions to test understanding.
+
+Content:
+{text[:4000]}
+
+For each question provide:
+1. Question text
+2. Four answer options (A, B, C, D)
+3. Correct answer
+4. Brief explanation
+
+Format exactly as:
+Question 1: [text]
+A) [option]
+B) [option]
+C) [option]
+D) [option]
+Correct: [letter]
+Explanation: [text]
+
+[Repeat for all questions]"""
+        
+        # Try Groq first
+        if self.groq_client:
+            try:
+                response = self.groq_client.chat.completions.create(
+                    model=self.groq_model_name,
+                    messages=[
+                        {"role": "system", "content": "You are an expert quiz creator. Generate clear, educational multiple-choice questions based on provided content."},
+                        {"role": "user", "content": prompt}
+                    ],
+                    temperature=0.7,
+                    max_tokens=2000
+                )
+                return self._parse_exam_questions(response.choices[0].message.content)
+            except Exception as e:
+                logger.error(f"Groq quiz error, trying Gemini: {e}")
+        
+        # Fallback to Gemini
+        if self.gemini_model:
+            try:
+                response = self.gemini_model.generate_content(prompt)
+                return self._parse_exam_questions(response.text)
+            except Exception as e:
+                logger.error(f"Gemini quiz error: {e}")
+        
+        return self._demo_exam("the document", num_questions)

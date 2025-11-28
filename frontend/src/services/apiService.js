@@ -543,6 +543,69 @@ class ApiService {
     const token = localStorage.getItem('access_token');
     return `${this.baseURL}/api/documents/${docId}/file?token=${token}`;
   }
+
+  async submitQuiz(docId, questions, userAnswers) {
+    try {
+      const token = localStorage.getItem('access_token');
+      console.log('💾 Submitting quiz for doc:', docId, 'with', Object.keys(userAnswers).length, 'answers');
+      
+      const response = await fetch(`${this.baseURL}/api/documents/${docId}/quiz/submit`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          document_id: docId,
+          questions: questions,
+          user_answers: userAnswers
+        })
+      });
+
+      if (!response.ok) {
+        console.error('❌ Failed to submit quiz. Status:', response.status);
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      console.log('✅ Quiz submitted successfully:', data);
+      return { success: true, attempt: data };
+    } catch (error) {
+      console.error('❌ API Error submitting quiz:', error);
+      throw new Error(`Failed to submit quiz: ${error.message}`);
+    }
+  }
+
+  async getLatestQuizAttempt(docId) {
+    try {
+      const token = localStorage.getItem('access_token');
+      console.log('🔍 Fetching latest quiz attempt for doc:', docId);
+      
+      const response = await fetch(`${this.baseURL}/api/documents/${docId}/quiz/latest`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        if (response.status === 404) {
+          console.log('ℹ️ No previous quiz attempt found for doc:', docId);
+          return { success: false, attempt: null };
+        }
+        console.error('❌ Error fetching quiz attempt. Status:', response.status);
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      console.log('✅ Retrieved previous quiz attempt:', data);
+      return { success: true, attempt: data };
+    } catch (error) {
+      console.error('❌ API Error fetching quiz attempt:', error);
+      return { success: false, attempt: null };
+    }
+  }
 }
 
 export const apiService = new ApiService();

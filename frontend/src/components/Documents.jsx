@@ -162,6 +162,10 @@ function Documents({ onNavigate }) {
   const [viewDocument, setViewDocument] = useState(null);
   const [viewPdfModal, setViewPdfModal] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [quizAnswers, setQuizAnswers] = useState({});
+  const [quizSubmitted, setQuizSubmitted] = useState(false);
+  const [quizScore, setQuizScore] = useState(null);
+  const [processingAction, setProcessingAction] = useState(null);
 
   useEffect(() => {
     const loadDocuments = async () => {
@@ -182,6 +186,18 @@ function Documents({ onNavigate }) {
 
     loadDocuments();
   }, [userId]);
+
+  // Debug: Log quiz state when it changes
+  useEffect(() => {
+    if (showResultModal && resultData?.action === "generate_quiz") {
+      console.log("Quiz Modal State:", {
+        quizSubmitted,
+        quizAnswersCount: Object.keys(quizAnswers).length,
+        hasScore: !!quizScore,
+        questionsCount: resultData?.content?.questions?.length
+      });
+    }
+  }, [showResultModal, quizSubmitted, quizAnswers, quizScore, resultData]);
 
   const handleFileSelect = (event) => {
     const file = event.target.files[0];
@@ -246,6 +262,50 @@ function Documents({ onNavigate }) {
   const handleProcess = async (docId, action) => {
     try {
       setProcessing(docId);
+      setProcessingAction(action);
+      setProcessingAction(action);
+      
+      // For quiz action, first check if there's a previous attempt
+      if (action === "generate_quiz") {
+        const attemptResult = await apiService.getLatestQuizAttempt(docId);
+        console.log("Quiz attempt result:", attemptResult);
+        
+        if (attemptResult.success && attemptResult.attempt) {
+          console.log("Loading previous quiz attempt:", {
+            attemptId: attemptResult.attempt.id,
+            questionsCount: attemptResult.attempt.questions?.length,
+            userAnswersCount: Object.keys(attemptResult.attempt.user_answers || {}).length,
+            score: attemptResult.attempt.score
+          });
+          
+          // Show previous attempt
+          // Load previous answers and show as submitted
+          const userAnswersObj = {};
+          Object.keys(attemptResult.attempt.user_answers).forEach(key => {
+            userAnswersObj[parseInt(key)] = attemptResult.attempt.user_answers[key];
+          });
+          
+          console.log("Converted user answers:", userAnswersObj);
+          
+          // Set all state before showing modal
+          setQuizAnswers(userAnswersObj);
+          setQuizSubmitted(true);
+          setQuizScore(attemptResult.attempt.score);
+          
+          setResultData({
+            title: "📊 Quiz - Previous Attempt",
+            action: action,
+            content: {
+              questions: attemptResult.attempt.questions
+            },
+            documentId: docId
+          });
+          setShowResultModal(true);
+          setProcessing(null);
+          return;
+        }
+      }
+      
       const result = await apiService.processDocument(docId, action);
       if (result.success) {
         // Show results in modal
@@ -258,14 +318,22 @@ function Documents({ onNavigate }) {
           title: actionTitles[action] || "Results",
           action: action,
           content: result.result,
+          documentId: docId
         });
         setShowResultModal(true);
+        // Reset quiz state when opening a new quiz
+        if (action === "generate_quiz") {
+          setQuizAnswers({});
+          setQuizSubmitted(false);
+          setQuizScore(null);
+        }
       }
     } catch (error) {
       console.error("Failed to process document:", error);
       alert("❌ Failed to process document. Please try again.");
     } finally {
       setProcessing(null);
+      setProcessingAction(null);
     }
   };
 
@@ -273,6 +341,57 @@ function Documents({ onNavigate }) {
     await signOut();
     if (onNavigate) {
       onNavigate("landing");
+    }
+  };
+
+  const handleQuizAnswerSelect = (questionIndex, answer) => {
+    if (quizSubmitted) return; // Don't allow changes after submission
+    setQuizAnswers(prev => ({
+      ...prev,
+      [questionIndex]: answer
+    }));
+  };
+
+  const handleQuizSubmit = async () => {
+    if (!resultData?.content?.questions || !resultData?.documentId) return;
+    
+    const questions = resultData.content.questions;
+    let correct = 0;
+    
+    questions.forEach((q, idx) => {
+      if (quizAnswers[idx] === q.correct) {
+        correct++;
+      }
+    });
+    
+    const score = {
+      correct,
+      total: questions.length,
+      percentage: Math.round((correct / questions.length) * 100)
+    };
+    
+    setQuizScore(score);
+    setQuizSubmitted(true);
+    
+    // Save quiz attempt to backend
+    try {
+      await apiService.submitQuiz(resultData.documentId, questions, quizAnswers);
+    } catch (error) {
+      console.error("Failed to save quiz attempt:", error);
+      // Don't show error to user, just log it
+    }
+  };
+
+  const handleQuizRetry = () => {
+    setQuizAnswers({});
+    setQuizSubmitted(false);
+    setQuizScore(null);
+    // Update title to show it's a new attempt
+    if (resultData) {
+      setResultData({
+        ...resultData,
+        title: "📊 Quiz - New Attempt"
+      });
     }
   };
 
@@ -655,21 +774,33 @@ function Documents({ onNavigate }) {
                             handleProcess(doc.id, "generate_notes")
                           }
                           disabled={processing === doc.id}
-                          className="px-3 py-2 bg-blue-50 text-blue-700 rounded-lg text-sm font-medium hover:bg-blue-100 transition-colors disabled:opacity-50"
+                          className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                            processing === doc.id && processingAction === "generate_notes"
+                              ? "bg-blue-200 text-blue-800 opacity-75"
+                              : "bg-blue-50 text-blue-700 hover:bg-blue-100"
+                          }`}
                         >
                           📝 Notes
                         </button>
                         <button
                           onClick={() => handleProcess(doc.id, "generate_quiz")}
                           disabled={processing === doc.id}
-                          className="px-3 py-2 bg-green-50 text-green-700 rounded-lg text-sm font-medium hover:bg-green-100 transition-colors disabled:opacity-50"
+                          className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                            processing === doc.id && processingAction === "generate_quiz"
+                              ? "bg-green-200 text-green-800 opacity-75"
+                              : "bg-green-50 text-green-700 hover:bg-green-100"
+                          }`}
                         >
                           📊 Quiz
                         </button>
                         <button
                           onClick={() => handleProcess(doc.id, "summarize")}
                           disabled={processing === doc.id}
-                          className="px-3 py-2 bg-purple-50 text-purple-700 rounded-lg text-sm font-medium hover:bg-purple-100 transition-colors disabled:opacity-50"
+                          className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                            processing === doc.id && processingAction === "summarize"
+                              ? "bg-purple-200 text-purple-800 opacity-75"
+                              : "bg-purple-50 text-purple-700 hover:bg-purple-100"
+                          }`}
                         >
                           ✨ Summary
                         </button>
@@ -891,36 +1022,180 @@ function Documents({ onNavigate }) {
                   );
                 })()}
 
-              {resultData.action === "generate_quiz" && (
+              {resultData.action === "generate_quiz" &&
+                resultData.content.questions &&
+                resultData.content.questions.length > 0 && (
+                <div className="space-y-6">
+                  {/* Quiz Score Card - Show after submission */}
+                  {quizSubmitted && quizScore && (
+                    <div className={`rounded-xl p-6 border-2 text-center ${
+                      quizScore.percentage >= 80 
+                        ? "bg-gradient-to-br from-green-100 to-green-50 border-green-500"
+                        : quizScore.percentage >= 60
+                        ? "bg-gradient-to-br from-yellow-100 to-yellow-50 border-yellow-500"
+                        : "bg-gradient-to-br from-red-100 to-red-50 border-red-500"
+                    }`}>
+                      <div className="text-6xl mb-4">
+                        {quizScore.percentage >= 80 ? "🎉" : quizScore.percentage >= 60 ? "👍" : "📚"}
+                      </div>
+                      <h3 className="text-3xl font-bold mb-2">
+                        {quizScore.correct} / {quizScore.total}
+                      </h3>
+                      <p className="text-xl font-semibold mb-4">
+                        Score: {quizScore.percentage}%
+                      </p>
+                      <p className="text-gray-700 mb-4">
+                        {quizScore.percentage >= 80 
+                          ? "Excellent work! You've mastered this material!"
+                          : quizScore.percentage >= 60
+                          ? "Good job! Review the explanations below to improve."
+                          : "Keep studying! Review the material and try again."}
+                      </p>
+                      <button
+                        onClick={handleQuizRetry}
+                        className="px-6 py-3 bg-green-600 text-white rounded-xl font-medium hover:bg-green-700 transition-colors"
+                      >
+                        🔄 Retry Quiz
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Quiz Questions */}
+                  {resultData.content.questions.map((q, idx) => {
+                    const userAnswer = quizAnswers[idx];
+                    const isAnswered = userAnswer !== undefined;
+                    
+                    return (
+                      <div
+                        key={idx}
+                        className="rounded-xl p-6 border bg-gradient-to-br from-green-100 to-green-50 border-green-200"
+                      >
+                        <h4 className="font-bold text-green-900 mb-4 flex items-center text-lg">
+                          <span className="bg-green-600 text-white w-8 h-8 rounded-full flex items-center justify-center mr-3 text-sm">
+                            {idx + 1}
+                          </span>
+                          {q.question}
+                        </h4>
+                        <div className="space-y-2 mb-4">
+                          {q.options?.map((option, optIdx) => {
+                            const letter = String.fromCharCode(65 + optIdx);
+                            const isCorrect = q.correct === letter;
+                            const isSelected = userAnswer === letter;
+                            const showResult = quizSubmitted;
+                            
+                            let bgColor = "bg-white border border-green-200";
+                            if (showResult) {
+                              if (isCorrect) {
+                                bgColor = "bg-green-200 border-2 border-green-600";
+                              } else if (isSelected && !isCorrect) {
+                                bgColor = "bg-red-200 border-2 border-red-600";
+                              }
+                            } else if (isSelected) {
+                              bgColor = "bg-green-100 border-2 border-green-500";
+                            }
+                            
+                            return (
+                              <button
+                                key={optIdx}
+                                onClick={() => handleQuizAnswerSelect(idx, letter)}
+                                disabled={quizSubmitted}
+                                className={`w-full text-left p-3 rounded-lg transition-all ${bgColor} ${
+                                  !quizSubmitted ? "hover:bg-green-50 hover:border-green-400 cursor-pointer" : "cursor-default"
+                                }`}
+                              >
+                                <span className="font-semibold text-green-900">
+                                  {letter})
+                                </span>{" "}
+                                <span className="text-gray-800">{option}</span>
+                                {showResult && isCorrect && (
+                                  <span className="ml-2 text-green-700 font-semibold">
+                                    ✓ Correct
+                                  </span>
+                                )}
+                                {showResult && isSelected && !isCorrect && (
+                                  <span className="ml-2 text-red-700 font-semibold">
+                                    ✗ Wrong
+                                  </span>
+                                )}
+                                {!showResult && isSelected && (
+                                  <span className="ml-2 text-green-700 font-semibold">
+                                    ✓ Selected
+                                  </span>
+                                )}
+                              </button>
+                            );
+                          })}
+                        </div>
+                        {quizSubmitted && q.explanation && (
+                          <div className="bg-green-50 rounded-lg p-3 border border-green-200">
+                            <p className="text-sm font-semibold text-green-900 mb-1">
+                              💡 Explanation:
+                            </p>
+                            <p className="text-sm text-gray-700">{q.explanation}</p>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {resultData.action === "generate_quiz" &&
+                (!resultData.content.questions ||
+                  resultData.content.questions.length === 0) && (
                 <div className="bg-green-50 rounded-xl p-6 border border-green-100 text-center">
                   <ChartBarIcon className="w-16 h-16 text-green-600 mx-auto mb-4" />
                   <p className="text-gray-800 text-lg">
-                    {resultData.content.message ||
-                      "Quiz generation coming soon!"}
+                    No quiz questions were generated. Please try again.
                   </p>
                 </div>
               )}
             </div>
 
             <div className="flex space-x-3 mt-6 pt-4 border-t border-gray-200 sticky bottom-0 bg-white">
-              <button
-                onClick={() => {
-                  navigator.clipboard.writeText(
-                    resultData.content.notes || resultData.content.summary || ""
-                  );
-                  alert("✅ Copied to clipboard!");
-                }}
-                className="flex-1 px-4 py-2.5 border border-gray-300 text-gray-700 rounded-xl font-medium hover:bg-gray-50 transition-colors flex items-center justify-center space-x-2"
-              >
-                <ClipboardDocumentListIcon className="w-5 h-5" />
-                <span>Copy to Clipboard</span>
-              </button>
-              <button
-                onClick={() => setShowResultModal(false)}
-                className="flex-1 px-4 py-2.5 bg-red-600 text-white rounded-xl font-medium hover:bg-red-700 transition-colors"
-              >
-                Close
-              </button>
+              {resultData.action === "generate_quiz" && !quizSubmitted ? (
+                <>
+                  <button
+                    onClick={handleQuizSubmit}
+                    disabled={Object.keys(quizAnswers).length !== resultData.content.questions?.length}
+                    className="flex-1 px-4 py-2.5 bg-green-600 text-white rounded-xl font-medium hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
+                  >
+                    <CheckCircleIcon className="w-5 h-5" />
+                    <span>
+                      Submit Quiz ({Object.keys(quizAnswers).length}/{resultData.content.questions?.length || 0})
+                    </span>
+                  </button>
+                  <button
+                    onClick={() => setShowResultModal(false)}
+                    className="px-6 py-2.5 border border-gray-300 text-gray-700 rounded-xl font-medium hover:bg-gray-50 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                </>
+              ) : (
+                <>
+                  {(resultData.action === "generate_notes" || resultData.action === "summarize") && (
+                    <button
+                      onClick={() => {
+                        navigator.clipboard.writeText(
+                          resultData.content.notes || resultData.content.summary || ""
+                        );
+                        alert("✅ Copied to clipboard!");
+                      }}
+                      className="flex-1 px-4 py-2.5 border border-gray-300 text-gray-700 rounded-xl font-medium hover:bg-gray-50 transition-colors flex items-center justify-center space-x-2"
+                    >
+                      <ClipboardDocumentListIcon className="w-5 h-5" />
+                      <span>Copy to Clipboard</span>
+                    </button>
+                  )}
+                  <button
+                    onClick={() => setShowResultModal(false)}
+                    className="flex-1 px-4 py-2.5 bg-red-600 text-white rounded-xl font-medium hover:bg-red-700 transition-colors"
+                  >
+                    Close
+                  </button>
+                </>
+              )}
             </div>
           </div>
         </div>
