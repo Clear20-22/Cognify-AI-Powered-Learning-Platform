@@ -9,6 +9,7 @@ from app.schemas.exam import (
     ExamCreateResponse,
     ExamSubmitRequest,
     ExamSubmitResponse,
+    ExamProgressRequest,
     QuestionResponse,
     QuestionResultResponse
 )
@@ -100,6 +101,30 @@ async def submit_exam(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to submit exam: {str(e)}"
+        )
+
+
+@router.post("/progress")
+async def save_exam_progress(
+    request: ExamProgressRequest,
+    exam_service: ExamService = Depends(get_exam_service)
+):
+    """
+    Save exam progress without submitting.
+    
+    Marks exam as 'in_progress' and stores current answers.
+    """
+    try:
+        await exam_service.save_progress(
+            exam_id=request.exam_id,
+            answers=request.answers
+        )
+        return {"success": True, "message": "Progress saved"}
+    except Exception as e:
+        logger.error(f"Save progress error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to save progress: {str(e)}"
         )
 
 

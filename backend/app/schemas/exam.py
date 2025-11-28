@@ -117,6 +117,24 @@ class QuestionResultResponse(BaseModel):
         }
 
 
+class ExamProgressRequest(BaseModel):
+    """Schema for saving exam progress."""
+    
+    exam_id: str = Field(..., description="Exam ID")
+    answers: Dict[int, str] = Field(..., description="Current answers (question index to answer mapping)")
+    
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "exam_id": "exam_123abc",
+                "answers": {
+                    0: "B",
+                    1: "A"
+                }
+            }
+        }
+
+
 class ExamSubmitResponse(BaseModel):
     """Schema for exam submission response."""
     

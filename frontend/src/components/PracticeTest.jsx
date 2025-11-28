@@ -17,6 +17,7 @@ import {
   Bars3Icon,
   PlayIcon,
   TrophyIcon,
+  MagnifyingGlassIcon,
 } from "@heroicons/react/24/outline";
 
 function PracticeTest({ onNavigate }) {
@@ -36,6 +37,8 @@ function PracticeTest({ onNavigate }) {
   const [submitting, setSubmitting] = useState(false);
   const [showResults, setShowResults] = useState(false);
   const [examResults, setExamResults] = useState(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
 
   const subjects = [
     "Mathematics",
@@ -56,9 +59,20 @@ function PracticeTest({ onNavigate }) {
     { value: "advanced", label: "Advanced", color: "red" },
   ];
 
+  // Helper function to get actual exam status - MUST be before useEffect
+  const getActualStatus = (exam) => {
+    const hasScore = exam.score !== undefined && exam.score !== null;
+    return exam.submitted || hasScore ? "completed" : (exam.status || "active");
+  };
+
   useEffect(() => {
     loadExams();
   }, [userId]);
+
+  // Debug: Log exams when they load
+  useEffect(() => {
+    // Removed debug logging
+  }, [exams]);
 
   const loadExams = async () => {
     if (!userId) return;
@@ -129,7 +143,8 @@ function PracticeTest({ onNavigate }) {
         // Otherwise, show exam taking view
         setActiveExam(examData);
         setCurrentQuestion(0);
-        setUserAnswers({});
+        // Restore saved answers if any
+        setUserAnswers(examData.progress_answers || {});
       }
     } catch (error) {
       console.error("Failed to load exam:", error);
@@ -138,10 +153,22 @@ function PracticeTest({ onNavigate }) {
   };
 
   const handleAnswerSelect = (questionIndex, answer) => {
-    setUserAnswers(prev => ({
-      ...prev,
-      [questionIndex]: answer
-    }));
+    setUserAnswers(prev => {
+      const updated = {
+        ...prev,
+        [questionIndex]: answer
+      };
+      
+      // Auto-save progress when user answers a question
+      if (activeExam) {
+        console.log("💾 Saving progress...", updated);
+        apiService.saveExamProgress(activeExam.id || activeExam._id, updated)
+          .then(() => console.log("✅ Progress saved successfully"))
+          .catch(err => console.error("❌ Failed to save progress:", err));
+      }
+      
+      return updated;
+    });
   };
 
   const handleSubmitExam = async () => {
@@ -183,13 +210,14 @@ function PracticeTest({ onNavigate }) {
 
   const handleCloseExam = () => {
     if (Object.keys(userAnswers).length > 0) {
-      if (!window.confirm("Are you sure you want to exit? Your progress will not be saved.")) {
+      if (!window.confirm("Your progress has been saved. You can continue this exam later from 'In Progress' filter. Do you want to exit?")) {
         return;
       }
     }
     setActiveExam(null);
     setUserAnswers({});
     setCurrentQuestion(0);
+    loadExams(); // Refresh to show updated status
   };
 
   const getAnswerText = (answerLetter, options) => {
@@ -233,6 +261,32 @@ function PracticeTest({ onNavigate }) {
       </span>
     );
   };
+
+  // Filter exams based on search query
+  const filteredExams = exams.filter((exam) => {
+    const topic = (exam.topic || exam.title || "").toLowerCase();
+    const difficulty = (exam.difficulty || "").toLowerCase();
+    const query = searchQuery.toLowerCase();
+    
+    // Check search query
+    const matchesSearch = topic.includes(query) || difficulty.includes(query);
+    
+    // Check status filter
+    const actualStatus = getActualStatus(exam);
+    
+    let matchesStatus = true;
+    if (statusFilter !== "all") {
+      if (statusFilter === "completed") {
+        matchesStatus = actualStatus === "completed";
+      } else if (statusFilter === "unattempted") {
+        matchesStatus = actualStatus === "active";
+      } else if (statusFilter === "in_progress") {
+        matchesStatus = actualStatus === "in_progress";
+      }
+    }
+    
+    return matchesSearch && matchesStatus;
+  });
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-red-50/30 flex">
@@ -448,10 +502,78 @@ function PracticeTest({ onNavigate }) {
               <div className="flex items-center space-x-3">
                 <TrophyIcon className="w-7 h-7 text-red-600" />
                 <h2 className="text-2xl font-bold text-gray-800">
-                  Your Practice Tests ({exams.length})
+                  Your Practice Tests ({filteredExams.length})
                 </h2>
               </div>
             </div>
+
+            {/* Search Bar */}
+            {exams.length > 0 && (
+              <div className="mb-6 space-y-4">
+                <div className="relative">
+                  <MagnifyingGlassIcon className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Search by topic or difficulty..."
+                    className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                  />
+                  {searchQuery && (
+                    <button
+                      onClick={() => setSearchQuery("")}
+                      className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    >
+                      <XMarkIcon className="w-5 h-5" />
+                    </button>
+                  )}
+                </div>
+
+                {/* Status Filter Buttons */}
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    onClick={() => setStatusFilter("all")}
+                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                      statusFilter === "all"
+                        ? "bg-red-600 text-white"
+                        : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                    }`}
+                  >
+                    All Tests
+                  </button>
+                  <button
+                    onClick={() => setStatusFilter("completed")}
+                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                      statusFilter === "completed"
+                        ? "bg-green-600 text-white"
+                        : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                    }`}
+                  >
+                    Completed
+                  </button>
+                  <button
+                    onClick={() => setStatusFilter("unattempted")}
+                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                      statusFilter === "unattempted"
+                        ? "bg-yellow-600 text-white"
+                        : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                    }`}
+                  >
+                    Unattempted
+                  </button>
+                  <button
+                    onClick={() => setStatusFilter("in_progress")}
+                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                      statusFilter === "in_progress"
+                        ? "bg-blue-600 text-white"
+                        : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                    }`}
+                  >
+                    In Progress
+                  </button>
+                </div>
+              </div>
+            )}
 
             {loading ? (
               <div className="text-center py-12">
@@ -472,12 +594,29 @@ function PracticeTest({ onNavigate }) {
                   Create Test
                 </button>
               </div>
+            ) : filteredExams.length === 0 ? (
+              <div className="text-center py-12">
+                <MagnifyingGlassIcon className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                <p className="text-gray-600 text-lg mb-2">No tests found</p>
+                <p className="text-gray-500 text-sm mb-6">
+                  Try adjusting your search query or filter
+                </p>
+                <button
+                  onClick={() => {
+                    setSearchQuery("");
+                    setStatusFilter("all");
+                  }}
+                  className="px-6 py-3 bg-red-600 text-white rounded-xl font-medium hover:bg-red-700 transition-colors"
+                >
+                  Clear All Filters
+                </button>
+              </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {exams.map((exam) => {
-                  // Determine actual status - only completed if score exists (not undefined/null) or explicitly submitted
+                {filteredExams.map((exam) => {
+                  // Determine actual status using the helper function
+                  const actualStatus = getActualStatus(exam);
                   const hasScore = exam.score !== undefined && exam.score !== null;
-                  const actualStatus = exam.submitted || hasScore ? "completed" : (exam.status || "pending");
                   
                   return (
                   <div

@@ -178,6 +178,40 @@ class ExamService:
             logger.error(f"Submit exam error: {e}")
             raise
     
+    async def save_progress(self, exam_id: str, answers: Dict) -> bool:
+        """
+        Save exam progress without submitting.
+        
+        Args:
+            exam_id: Exam identifier
+            answers: Current answers (question index to answer mapping)
+            
+        Returns:
+            True if progress saved successfully
+        """
+        try:
+            # Get exam
+            exam = await self.data_store.get_exam(exam_id)
+            if not exam:
+                raise ValueError("Exam not found")
+            
+            # Convert integer keys to strings for MongoDB compatibility
+            string_key_answers = {str(k): v for k, v in answers.items()}
+            
+            # Update exam status to in_progress and save answers
+            updates = {
+                "status": "in_progress",
+                "progress_answers": string_key_answers,
+                "last_updated": datetime.now().isoformat()
+            }
+            await self.data_store.update_exam(exam_id, updates)
+            
+            logger.info(f"Progress saved for exam {exam_id}: {len(answers)} answers")
+            return True
+        except Exception as e:
+            logger.error(f"Save progress error: {e}")
+            raise
+    
     async def get_exam(self, exam_id: str) -> Optional[Dict[str, Any]]:
         """
         Get exam details.
@@ -204,6 +238,11 @@ class ExamService:
                 for i, q in enumerate(questions)
             ]
             
+            # Convert string keys back to integers for progress_answers
+            progress_answers = exam.get("progress_answers", {})
+            if progress_answers:
+                progress_answers = {int(k): v for k, v in progress_answers.items()}
+            
             return {
                 "id": exam_id,
                 "_id": exam_id,
@@ -212,7 +251,8 @@ class ExamService:
                 "status": exam.get("status"),
                 "submitted": False,
                 "num_questions": len(questions),
-                "questions": safe_questions
+                "questions": safe_questions,
+                "progress_answers": progress_answers
             }
         
         return exam

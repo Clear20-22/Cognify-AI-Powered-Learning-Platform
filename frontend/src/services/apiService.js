@@ -290,6 +290,30 @@ class ApiService {
     }
   }
 
+  async saveExamProgress(examId, answers) {
+    try {
+      const response = await fetch(`${this.baseURL}/api/exams/progress`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          exam_id: examId,
+          answers: answers
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('API Error:', error);
+      throw new Error(`Failed to save progress: ${error.message}`);
+    }
+  }
+
   async completeExam(examId) {
     try {
       const response = await fetch(`${this.baseURL}/api/exams/${examId}/complete`, {
