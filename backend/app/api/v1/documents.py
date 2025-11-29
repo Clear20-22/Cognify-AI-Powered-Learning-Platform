@@ -31,6 +31,7 @@ router = APIRouter(prefix="/documents")
 @router.post("/upload", response_model=DocumentUploadResponse, status_code=status.HTTP_201_CREATED)
 async def upload_document(
     file: UploadFile = File(...),
+    user_id: Optional[str] = Query(None),
     current_user: Optional[Dict[str, Any]] = Depends(get_current_user),
     doc_service: DocumentService = Depends(get_document_service)
 ):
@@ -38,17 +39,21 @@ async def upload_document(
     Upload a PDF or PPTX document.
     
     - **file**: PDF or PPTX file (max 50MB)
+    - **user_id**: Optional user ID (for unauthenticated uploads)
     
     Returns the uploaded document information.
     """
-    if not current_user:
+    # Use authenticated user ID if available, otherwise use provided user_id
+    effective_user_id = current_user["id"] if current_user else user_id
+    
+    if not effective_user_id:
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Authentication required"
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="User ID required (either via authentication or query parameter)"
         )
     
     try:
-        document = await doc_service.upload_document(current_user["id"], file)
+        document = await doc_service.upload_document(effective_user_id, file)
         
         return DocumentUploadResponse(
             id=document.id,
@@ -68,22 +73,28 @@ async def upload_document(
 
 @router.get("/", response_model=DocumentListResponse)
 async def get_documents(
+    user_id: Optional[str] = Query(None),
     current_user: Optional[Dict[str, Any]] = Depends(get_current_user),
     doc_service: DocumentService = Depends(get_document_service)
 ):
     """
     Get all documents for the current user.
     
+    - **user_id**: Optional user ID (for unauthenticated requests)
+    
     Returns a list of all uploaded documents.
     """
-    if not current_user:
+    # Use authenticated user ID if available, otherwise use provided user_id
+    effective_user_id = current_user["id"] if current_user else user_id
+    
+    if not effective_user_id:
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Authentication required"
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="User ID required (either via authentication or query parameter)"
         )
     
     try:
-        documents = await doc_service.get_user_documents(current_user["id"])
+        documents = await doc_service.get_user_documents(effective_user_id)
         
         return DocumentListResponse(
             documents=[
@@ -115,6 +126,7 @@ async def get_documents(
 @router.get("/{doc_id}", response_model=DocumentResponse)
 async def get_document(
     doc_id: str,
+    user_id: Optional[str] = Query(None),
     current_user: Optional[Dict[str, Any]] = Depends(get_current_user),
     doc_service: DocumentService = Depends(get_document_service)
 ):
@@ -122,15 +134,19 @@ async def get_document(
     Get a specific document by ID.
     
     - **doc_id**: Document ID
+    - **user_id**: Optional user ID (for unauthenticated requests)
     """
-    if not current_user:
+    # Use authenticated user ID if available, otherwise use provided user_id
+    effective_user_id = current_user["id"] if current_user else user_id
+    
+    if not effective_user_id:
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Authentication required"
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="User ID required (either via authentication or query parameter)"
         )
     
     try:
-        document = await doc_service.get_document(doc_id, current_user["id"])
+        document = await doc_service.get_document(doc_id, effective_user_id)
         
         if not document:
             raise HTTPException(status_code=404, detail="Document not found")
@@ -161,32 +177,58 @@ async def get_document(
 @router.get("/{doc_id}/file")
 async def get_document_file(
     doc_id: str,
-    token: str = Query(...),
+    token: Optional[str] = Query(None),
+    user_id: Optional[str] = Query(None),
     doc_service: DocumentService = Depends(get_document_service)
 ):
     """
     Get the actual document file (PDF/PPTX) from GridFS.
     
     - **doc_id**: Document ID
-    - **token**: JWT token for authentication
+    - **token**: JWT token for authentication (optional)
+    - **user_id**: User ID for unauthenticated requests (optional)
     """
     try:
-        # Validate token and get user from the token string
-        from app.core.security import decode_access_token
-        user_data = decode_access_token(token)
-        if not user_data:
+        logger.info(f"📥 get_document_file called - doc_id: {doc_id}, token: {token[:50] if token else None}..., user_id: {user_id}")
+        
+        # Try to get user from token first, otherwise use user_id
+        effective_user_id = None
+        
+        if token:
+            # Validate token and get user from the token string
+            from app.core.security import decode_access_token
+            try:
+                user_data = decode_access_token(token)
+                logger.info(f"🔓 Token decode result: {user_data}")
+                if user_data and "sub" in user_data:
+                    effective_user_id = user_data["sub"]
+                    logger.info(f"✅ Token decoded, user_id from token: {effective_user_id}")
+                else:
+                    logger.warning(f"⚠️ Token decode failed or missing 'sub' field")
+            except Exception as e:
+                logger.error(f"❌ Token decode error: {e}")
+                logger.exception("Full traceback:")
+        
+        # Fall back to user_id parameter
+        if not effective_user_id and user_id:
+            effective_user_id = user_id
+            logger.info(f"✅ Using user_id from query parameter: {effective_user_id}")
+        
+        logger.info(f"🔍 Final effective_user_id: {effective_user_id}")
+        
+        if not effective_user_id:
             raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid or expired token"
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="User ID required (either via token or query parameter)"
             )
         
         # Get document
-        document = await doc_service.get_document(doc_id, user_data["sub"])
+        document = await doc_service.get_document(doc_id, effective_user_id)
         if not document:
             raise HTTPException(status_code=404, detail="Document not found")
         
         # Get file content from GridFS
-        file_content = await doc_service.get_document_file(doc_id, user_data["sub"])
+        file_content = await doc_service.get_document_file(doc_id, effective_user_id)
         if not file_content:
             raise HTTPException(status_code=404, detail="File not found")
         
@@ -219,6 +261,7 @@ async def get_document_file(
 @router.delete("/{doc_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_document(
     doc_id: str,
+    user_id: Optional[str] = Query(None),
     current_user: Optional[Dict[str, Any]] = Depends(get_current_user),
     doc_service: DocumentService = Depends(get_document_service)
 ):
@@ -226,15 +269,19 @@ async def delete_document(
     Delete a document.
     
     - **doc_id**: Document ID
+    - **user_id**: Optional user ID (for unauthenticated requests)
     """
-    if not current_user:
+    # Use authenticated user ID if available, otherwise use provided user_id
+    effective_user_id = current_user["id"] if current_user else user_id
+    
+    if not effective_user_id:
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Authentication required"
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="User ID required (either via authentication or query parameter)"
         )
     
     try:
-        deleted = await doc_service.delete_document(doc_id, current_user["id"])
+        deleted = await doc_service.delete_document(doc_id, effective_user_id)
         
         if not deleted:
             raise HTTPException(status_code=404, detail="Document not found")
@@ -252,6 +299,7 @@ async def delete_document(
 async def process_document(
     doc_id: str,
     request: DocumentProcessRequest,
+    user_id: Optional[str] = Query(None),
     current_user: Optional[Dict[str, Any]] = Depends(get_current_user),
     doc_service: DocumentService = Depends(get_document_service),
     ai_service: AIService = Depends(get_ai_service)
@@ -261,16 +309,20 @@ async def process_document(
     
     - **doc_id**: Document ID
     - **action**: Action to perform (generate_notes, generate_quiz, summarize)
+    - **user_id**: Optional user ID (for unauthenticated requests)
     """
-    if not current_user:
+    # Use authenticated user ID if available, otherwise use provided user_id
+    effective_user_id = current_user["id"] if current_user else user_id
+    
+    if not effective_user_id:
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Authentication required"
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="User ID required (either via authentication or query parameter)"
         )
     
     try:
         # Get document
-        document = await doc_service.get_document(doc_id, current_user["id"])
+        document = await doc_service.get_document(doc_id, effective_user_id)
         if not document:
             raise HTTPException(status_code=404, detail="Document not found")
         
@@ -278,7 +330,7 @@ async def process_document(
             raise HTTPException(status_code=400, detail="Document is still being processed")
         
         # Get text chunks
-        chunks = await doc_service.get_document_text_chunks(doc_id, current_user["id"])
+        chunks = await doc_service.get_document_text_chunks(doc_id, effective_user_id)
         if not chunks:
             raise HTTPException(status_code=400, detail="No text extracted from document")
         
@@ -324,6 +376,7 @@ async def process_document(
 async def submit_quiz(
     doc_id: str,
     request: QuizSubmitRequest,
+    user_id: Optional[str] = Query(None),
     current_user: Optional[Dict[str, Any]] = Depends(get_current_user),
     doc_service: DocumentService = Depends(get_document_service)
 ):
@@ -333,16 +386,20 @@ async def submit_quiz(
     - **doc_id**: Document ID
     - **questions**: Quiz questions with correct answers
     - **user_answers**: User's selected answers
+    - **user_id**: Optional user ID (for unauthenticated requests)
     """
-    if not current_user:
+    # Use authenticated user ID if available, otherwise use provided user_id
+    effective_user_id = current_user["id"] if current_user else user_id
+    
+    if not effective_user_id:
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Authentication required"
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="User ID required (either via authentication or query parameter)"
         )
     
     try:
         # Verify document belongs to user
-        document = await doc_service.get_document(doc_id, current_user["id"])
+        document = await doc_service.get_document(doc_id, effective_user_id)
         if not document:
             raise HTTPException(status_code=404, detail="Document not found")
         
@@ -364,13 +421,13 @@ async def submit_quiz(
             "percentage": round((correct / total * 100) if total > 0 else 0)
         }
         
-        logger.info(f"Quiz submission - User: {current_user['id']}, Doc: {doc_id}, Score: {score}")
+        logger.info(f"Quiz submission - User: {effective_user_id}, Doc: {doc_id}, Score: {score}")
         
         # Create quiz attempt
         attempt_id = f"attempt_{uuid.uuid4().hex[:12]}"
         quiz_attempt = QuizAttempt(
             id=attempt_id,
-            user_id=current_user["id"],
+            user_id=effective_user_id,
             document_id=doc_id,
             questions=request.questions,
             user_answers=user_answers_dict,  # Store as strings
@@ -398,6 +455,7 @@ async def submit_quiz(
 @router.get("/{doc_id}/quiz/latest", response_model=QuizAttemptResponse)
 async def get_latest_quiz_attempt(
     doc_id: str,
+    user_id: Optional[str] = Query(None),
     current_user: Optional[Dict[str, Any]] = Depends(get_current_user),
     doc_service: DocumentService = Depends(get_document_service)
 ):
@@ -405,28 +463,32 @@ async def get_latest_quiz_attempt(
     Get the latest quiz attempt for a document.
     
     - **doc_id**: Document ID
+    - **user_id**: Optional user ID (for unauthenticated requests)
     """
-    if not current_user:
+    # Use authenticated user ID if available, otherwise use provided user_id
+    effective_user_id = current_user["id"] if current_user else user_id
+    
+    if not effective_user_id:
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Authentication required"
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="User ID required (either via authentication or query parameter)"
         )
     
     try:
         # Verify document belongs to user
-        document = await doc_service.get_document(doc_id, current_user["id"])
+        document = await doc_service.get_document(doc_id, effective_user_id)
         if not document:
             raise HTTPException(status_code=404, detail="Document not found")
         
         # Get latest attempt
         db = Database.get_db()
         attempt_data = await db.quiz_attempts.find_one(
-            {"document_id": doc_id, "user_id": current_user["id"]},
+            {"document_id": doc_id, "user_id": effective_user_id},
             sort=[("created_at", -1)]
         )
         
         if not attempt_data:
-            logger.info(f"No quiz attempt found for doc: {doc_id}, user: {current_user['id']}")
+            logger.info(f"No quiz attempt found for doc: {doc_id}, user: {effective_user_id}")
             raise HTTPException(status_code=404, detail="No quiz attempts found")
         
         logger.info(f"Retrieved quiz attempt: {attempt_data.get('id')} for doc: {doc_id}")

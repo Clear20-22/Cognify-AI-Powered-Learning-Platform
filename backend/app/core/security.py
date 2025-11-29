@@ -90,5 +90,11 @@ def decode_access_token(token: str) -> Optional[Dict[str, Any]]:
             algorithms=[settings.ALGORITHM]
         )
         return payload
-    except JWTError:
+    except JWTError as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"JWT decode error: {e}")
+        logger.error(f"Token (first 50 chars): {token[:50]}")
+        logger.error(f"SECRET_KEY (first 10 chars): {settings.SECRET_KEY[:10]}")
+        logger.error(f"Algorithm: {settings.ALGORITHM}")
         return None

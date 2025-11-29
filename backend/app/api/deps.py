@@ -99,36 +99,24 @@ async def get_current_user(
         payload = decode_access_token(token)
         
         if payload is None:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Could not validate credentials",
-                headers={"WWW-Authenticate": "Bearer"},
-            )
+            # Return None for optional auth instead of raising exception
+            return None
         
         user_id = payload.get("sub")
         if user_id is None:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Could not validate credentials",
-                headers={"WWW-Authenticate": "Bearer"},
-            )
+            # Return None for optional auth instead of raising exception
+            return None
         
         user = await data_store.get_user(user_id)
         if user is None:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="User not found",
-                headers={"WWW-Authenticate": "Bearer"},
-            )
+            # Return None for optional auth instead of raising exception
+            return None
         
         return user
         
     except JWTError:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Could not validate credentials",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
+        # Return None for optional auth instead of raising exception
+        return None
 
 
 async def get_current_active_user(

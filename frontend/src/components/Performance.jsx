@@ -25,6 +25,10 @@ function Performance({ onNavigate }) {
   const userId = useUserId();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [loading, setLoading] = useState(true);
+  const [showAllScores, setShowAllScores] = useState(false);
+  const [showAllTopics, setShowAllTopics] = useState(false);
+  const [showAllStrongAreas, setShowAllStrongAreas] = useState(false);
+  const [showAllWeakAreas, setShowAllWeakAreas] = useState(false);
   const [performanceData, setPerformanceData] = useState({
     overview: {
       totalChats: 0,
@@ -38,6 +42,9 @@ function Performance({ onNavigate }) {
     },
     recentScores: [],
     topicBreakdown: [],
+    activityData: [],
+    totalActivities: 0,
+    activeDays: 0,
     studyPatterns: {
       mostActiveDay: "Monday",
       mostActiveTime: "Evening",
@@ -67,13 +74,17 @@ function Performance({ onNavigate }) {
         const exams = examsData.exams || [];
 
         // Calculate overview metrics
-        const completedExams = exams.filter(e => e.status === 'completed' || e.score !== undefined);
+        const completedExams = exams.filter(e => 
+          (e.status === 'completed' || e.submitted === true) && 
+          e.score !== undefined && 
+          e.score !== null
+        );
         const totalScore = completedExams.reduce((sum, exam) => sum + (exam.score || 0), 0);
         const avgScore = completedExams.length > 0 ? Math.round(totalScore / completedExams.length) : 0;
         const totalStudyTime = chats.length * 30 + exams.length * 45; // Estimated in minutes
         const thisWeekTime = totalStudyTime * 0.3; // Simplified estimate
 
-        // Recent exam scores (last 5)
+        // Recent exam scores (last 5 completed exams only)
         const recentScores = completedExams
           .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
           .slice(0, 5)
@@ -124,6 +135,57 @@ function Performance({ onNavigate }) {
         const weakAreas = topicAverages.filter(t => t.average < 70).sort((a, b) => a.average - b.average).slice(0, 3);
         const strongAreas = topicAverages.filter(t => t.average >= 80).sort((a, b) => b.average - a.average).slice(0, 3);
 
+        // Calculate activity data for GitHub-style graph
+        const activityMap = {};
+        const now = new Date();
+        now.setHours(0, 0, 0, 0); // Reset to start of today
+        
+        // Calculate start date (52 weeks ago from today)
+        const startDate = new Date(now);
+        startDate.setDate(startDate.getDate() - 364);
+        
+        // Initialize days from start to today only
+        for (let d = new Date(startDate); d <= now; d.setDate(d.getDate() + 1)) {
+          const dateKey = d.toISOString().split('T')[0];
+          activityMap[dateKey] = 0;
+        }
+
+        // Count activities per day
+        [...exams, ...chats, ...notes].forEach(item => {
+          const dateKey = new Date(item.created_at).toISOString().split('T')[0];
+          if (activityMap[dateKey] !== undefined) {
+            activityMap[dateKey]++;
+          }
+        });
+
+        const activityData = Object.entries(activityMap).map(([date, count]) => ({
+          date,
+          count,
+        }));
+
+        // Calculate streaks
+        let currentStreak = 0;
+        let longestStreak = 0;
+        let tempStreak = 0;
+        
+        for (let i = activityData.length - 1; i >= 0; i--) {
+          if (activityData[i].count > 0) {
+            tempStreak++;
+            if (i === activityData.length - 1 || currentStreak > 0) {
+              currentStreak = tempStreak;
+            }
+            longestStreak = Math.max(longestStreak, tempStreak);
+          } else {
+            if (i === activityData.length - 1) {
+              currentStreak = 0;
+            }
+            tempStreak = 0;
+          }
+        }
+
+        const totalActivities = activityData.reduce((sum, d) => sum + d.count, 0);
+        const activeDays = activityData.filter(d => d.count > 0).length;
+
         setPerformanceData({
           overview: {
             totalChats: chats.length,
@@ -131,12 +193,16 @@ function Performance({ onNavigate }) {
             totalExams: exams.length,
             completedExams: completedExams.length,
             averageScore: avgScore,
-            studyStreak: 7, // TODO: Calculate actual streak
+            studyStreak: currentStreak,
+            longestStreak: longestStreak,
             totalStudyTime: Math.round(totalStudyTime / 60 * 10) / 10, // Convert to hours
             thisWeekTime: Math.round(thisWeekTime / 60 * 10) / 10,
           },
           recentScores,
           topicBreakdown,
+          activityData,
+          totalActivities,
+          activeDays,
           studyPatterns: {
             mostActiveDay: "Monday",
             mostActiveTime: "Evening",
@@ -377,6 +443,134 @@ function Performance({ onNavigate }) {
                 />
               </div>
 
+              {/* Activity Graph */}
+              <div className="bg-white rounded-xl p-6 shadow-md border border-gray-100">
+                <div className="mb-6">
+                  <h2 className="text-xl font-bold text-gray-800 mb-2">
+                    {performanceData.totalActivities} activities in the last year
+                  </h2>
+                  <div className="flex items-center gap-2 text-sm text-gray-600">
+                    <span>Less</span>
+                    <div className="flex gap-1">
+                      <div className="w-3 h-3 bg-gray-100 rounded-sm border border-gray-200"></div>
+                      <div className="w-3 h-3 bg-green-200 rounded-sm"></div>
+                      <div className="w-3 h-3 bg-green-400 rounded-sm"></div>
+                      <div className="w-3 h-3 bg-green-600 rounded-sm"></div>
+                      <div className="w-3 h-3 bg-green-800 rounded-sm"></div>
+                    </div>
+                    <span>More</span>
+                  </div>
+                </div>
+
+                <div className="overflow-x-auto">
+                  <div className="inline-block min-w-full">
+                    <div className="flex gap-1">
+                      {/* Day labels */}
+                      <div className="flex flex-col gap-1 text-xs text-gray-500 pr-2">
+                        <div className="h-3"></div>
+                        <div className="h-3">Mon</div>
+                        <div className="h-3"></div>
+                        <div className="h-3">Wed</div>
+                        <div className="h-3"></div>
+                        <div className="h-3">Fri</div>
+                        <div className="h-3"></div>
+                      </div>
+
+                      {/* Activity grid */}
+                      <div className="flex gap-1">
+                        {(() => {
+                          const weeks = [];
+                          let currentWeek = [];
+                          
+                          performanceData.activityData.forEach((day, index) => {
+                            const date = new Date(day.date);
+                            const dayOfWeek = date.getDay();
+                            
+                            if (index === 0) {
+                              for (let i = 0; i < dayOfWeek; i++) {
+                                currentWeek.push(null);
+                              }
+                            }
+                            
+                            currentWeek.push(day);
+                            
+                            if (dayOfWeek === 6 || index === performanceData.activityData.length - 1) {
+                              weeks.push([...currentWeek]);
+                              currentWeek = [];
+                            }
+                          });
+
+                          const getActivityColor = (count) => {
+                            if (count === 0) return 'bg-gray-100 border border-gray-200';
+                            if (count === 1) return 'bg-green-200';
+                            if (count <= 3) return 'bg-green-400';
+                            if (count <= 6) return 'bg-green-600';
+                            return 'bg-green-800';
+                          };
+
+                          const getActivityLevel = (count) => {
+                            if (count === 0) return 'No activity';
+                            if (count === 1) return '1 activity';
+                            return `${count} activities`;
+                          };
+                          
+                          return weeks.map((week, weekIndex) => (
+                            <div key={weekIndex} className="flex flex-col gap-1">
+                              {week.map((day, dayIndex) => (
+                                <div
+                                  key={dayIndex}
+                                  className={`w-3 h-3 rounded-sm ${day ? getActivityColor(day.count) : 'bg-transparent'} hover:ring-2 hover:ring-gray-400 cursor-pointer transition-all`}
+                                  title={day ? `${day.date}: ${getActivityLevel(day.count)}` : ''}
+                                ></div>
+                              ))}
+                            </div>
+                          ));
+                        })()}
+                      </div>
+                    </div>
+
+                    {/* Month labels */}
+                    <div className="flex mt-2 ml-14 text-xs text-gray-500">
+                      {(() => {
+                        const monthLabels = [];
+                        const startDate = new Date(performanceData.activityData[0]?.date);
+                        const endDate = new Date(performanceData.activityData[performanceData.activityData.length - 1]?.date);
+                        
+                        if (!startDate || !endDate) return null;
+                        
+                        let currentMonth = startDate.getMonth();
+                        let weekCount = 0;
+                        let lastLabelMonth = -1;
+                        
+                        performanceData.activityData.forEach((day, index) => {
+                          const date = new Date(day.date);
+                          const dayOfWeek = date.getDay();
+                          const month = date.getMonth();
+                          
+                          // At the start of a new week
+                          if (dayOfWeek === 0 || index === 0) {
+                            // If it's a new month and we haven't labeled it yet in this position
+                            if (month !== currentMonth && month !== lastLabelMonth) {
+                              const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                              monthLabels.push(
+                                <div key={weekCount} style={{ position: 'absolute', left: `${weekCount * 16}px` }}>
+                                  {monthNames[month]}
+                                </div>
+                              );
+                              lastLabelMonth = month;
+                            }
+                            currentMonth = month;
+                            weekCount++;
+                          }
+                        });
+                        
+                        return <div style={{ position: 'relative', height: '16px' }}>{monthLabels}</div>;
+                      })()}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Recent Exam Scores */}
                 <div className="lg:col-span-2 bg-white rounded-xl p-6 shadow-md border border-gray-100">
@@ -391,19 +585,29 @@ function Performance({ onNavigate }) {
                       <p className="text-sm">Take exams to track your performance</p>
                     </div>
                   ) : (
-                    <div className="space-y-3">
-                      {performanceData.recentScores.map((score, idx) => (
-                        <div key={idx} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
-                          <div className="flex-1">
-                            <p className="font-medium text-gray-800">{score.title}</p>
-                            <p className="text-xs text-gray-500">{score.date}</p>
+                    <>
+                      <div className="space-y-3">
+                        {performanceData.recentScores.slice(0, showAllScores ? performanceData.recentScores.length : 3).map((score, idx) => (
+                          <div key={idx} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                            <div className="flex-1">
+                              <p className="font-medium text-gray-800">{score.title}</p>
+                              <p className="text-xs text-gray-500">{score.date}</p>
+                            </div>
+                            <div className={`text-2xl font-bold ${score.score >= 80 ? 'text-green-600' : score.score >= 60 ? 'text-yellow-600' : 'text-red-600'}`}>
+                              {score.score}%
+                            </div>
                           </div>
-                          <div className={`text-2xl font-bold ${score.score >= 80 ? 'text-green-600' : score.score >= 60 ? 'text-yellow-600' : 'text-red-600'}`}>
-                            {score.score}%
-                          </div>
-                        </div>
-                      ))}
-                    </div>
+                        ))}
+                      </div>
+                      {performanceData.recentScores.length > 3 && (
+                        <button
+                          onClick={() => setShowAllScores(!showAllScores)}
+                          className="w-full mt-4 px-4 py-2 text-red-600 hover:bg-red-50 rounded-lg text-sm font-medium transition-colors"
+                        >
+                          {showAllScores ? 'Show Less' : `View All (${performanceData.recentScores.length})`}
+                        </button>
+                      )}
+                    </>
                   )}
                 </div>
 
@@ -415,16 +619,16 @@ function Performance({ onNavigate }) {
                   </h3>
                   <div className="space-y-4">
                     <div className="bg-white/10 rounded-lg p-4 backdrop-blur-sm">
-                      <p className="text-purple-200 text-sm mb-1">Most Active Day</p>
-                      <p className="text-xl font-bold">{performanceData.studyPatterns.mostActiveDay}</p>
+                      <p className="text-purple-200 text-sm mb-1">Current Streak</p>
+                      <p className="text-xl font-bold">{performanceData.overview.studyStreak} days 🔥</p>
                     </div>
                     <div className="bg-white/10 rounded-lg p-4 backdrop-blur-sm">
-                      <p className="text-purple-200 text-sm mb-1">Preferred Time</p>
-                      <p className="text-xl font-bold">{performanceData.studyPatterns.mostActiveTime}</p>
+                      <p className="text-purple-200 text-sm mb-1">Longest Streak</p>
+                      <p className="text-xl font-bold">{performanceData.overview.longestStreak} days</p>
                     </div>
                     <div className="bg-white/10 rounded-lg p-4 backdrop-blur-sm">
-                      <p className="text-purple-200 text-sm mb-1">Avg. Session</p>
-                      <p className="text-xl font-bold">{performanceData.studyPatterns.averageSessionLength} min</p>
+                      <p className="text-purple-200 text-sm mb-1">Active Days</p>
+                      <p className="text-xl font-bold">{performanceData.activeDays} / 365</p>
                     </div>
                   </div>
                 </div>
@@ -438,26 +642,36 @@ function Performance({ onNavigate }) {
                   {performanceData.topicBreakdown.length === 0 ? (
                     <p className="text-center py-8 text-gray-500">No topics tracked yet</p>
                   ) : (
-                    <div className="space-y-3">
-                      {performanceData.topicBreakdown.map((topic, idx) => {
-                        const maxCount = Math.max(...performanceData.topicBreakdown.map(t => t.count));
-                        const percentage = (topic.count / maxCount) * 100;
-                        return (
-                          <div key={idx}>
-                            <div className="flex justify-between text-sm mb-1">
-                              <span className="font-medium text-gray-700">{topic.topic}</span>
-                              <span className="text-gray-500">{topic.count} activities</span>
+                    <>
+                      <div className="space-y-3">
+                        {performanceData.topicBreakdown.slice(0, showAllTopics ? performanceData.topicBreakdown.length : 3).map((topic, idx) => {
+                          const maxCount = Math.max(...performanceData.topicBreakdown.map(t => t.count));
+                          const percentage = (topic.count / maxCount) * 100;
+                          return (
+                            <div key={idx}>
+                              <div className="flex justify-between text-sm mb-1">
+                                <span className="font-medium text-gray-700">{topic.topic}</span>
+                                <span className="text-gray-500">{topic.count} activities</span>
+                              </div>
+                              <div className="w-full bg-gray-200 rounded-full h-2">
+                                <div
+                                  className="bg-gradient-to-r from-red-500 to-red-600 h-2 rounded-full transition-all"
+                                  style={{ width: `${percentage}%` }}
+                                ></div>
+                              </div>
                             </div>
-                            <div className="w-full bg-gray-200 rounded-full h-2">
-                              <div
-                                className="bg-gradient-to-r from-red-500 to-red-600 h-2 rounded-full transition-all"
-                                style={{ width: `${percentage}%` }}
-                              ></div>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
+                          );
+                        })}
+                      </div>
+                      {performanceData.topicBreakdown.length > 3 && (
+                        <button
+                          onClick={() => setShowAllTopics(!showAllTopics)}
+                          className="w-full mt-4 px-4 py-2 text-red-600 hover:bg-red-50 rounded-lg text-sm font-medium transition-colors"
+                        >
+                          {showAllTopics ? 'Show Less' : `View All (${performanceData.topicBreakdown.length})`}
+                        </button>
+                      )}
+                    </>
                   )}
                 </div>
 
@@ -472,14 +686,24 @@ function Performance({ onNavigate }) {
                     {performanceData.strongAreas.length === 0 ? (
                       <p className="text-sm text-gray-500">Complete more exams to identify strengths</p>
                     ) : (
-                      <div className="space-y-2">
-                        {performanceData.strongAreas.map((area, idx) => (
-                          <div key={idx} className="flex justify-between items-center p-3 bg-green-50 rounded-lg">
-                            <span className="text-sm font-medium text-gray-700">{area.topic}</span>
-                            <span className="text-sm font-bold text-green-600">{Math.round(area.average)}%</span>
-                          </div>
-                        ))}
-                      </div>
+                      <>
+                        <div className="space-y-2">
+                          {performanceData.strongAreas.slice(0, showAllStrongAreas ? performanceData.strongAreas.length : 3).map((area, idx) => (
+                            <div key={idx} className="flex justify-between items-center p-3 bg-green-50 rounded-lg">
+                              <span className="text-sm font-medium text-gray-700">{area.topic}</span>
+                              <span className="text-sm font-bold text-green-600">{Math.round(area.average)}%</span>
+                            </div>
+                          ))}
+                        </div>
+                        {performanceData.strongAreas.length > 3 && (
+                          <button
+                            onClick={() => setShowAllStrongAreas(!showAllStrongAreas)}
+                            className="w-full mt-3 px-4 py-2 text-green-600 hover:bg-green-50 rounded-lg text-sm font-medium transition-colors"
+                          >
+                            {showAllStrongAreas ? 'Show Less' : `View All (${performanceData.strongAreas.length})`}
+                          </button>
+                        )}
+                      </>
                     )}
                   </div>
 
@@ -492,14 +716,24 @@ function Performance({ onNavigate }) {
                     {performanceData.weakAreas.length === 0 ? (
                       <p className="text-sm text-gray-500">Great job! No weak areas identified</p>
                     ) : (
-                      <div className="space-y-2">
-                        {performanceData.weakAreas.map((area, idx) => (
-                          <div key={idx} className="flex justify-between items-center p-3 bg-orange-50 rounded-lg">
-                            <span className="text-sm font-medium text-gray-700">{area.topic}</span>
-                            <span className="text-sm font-bold text-orange-600">{Math.round(area.average)}%</span>
-                          </div>
-                        ))}
-                      </div>
+                      <>
+                        <div className="space-y-2">
+                          {performanceData.weakAreas.slice(0, showAllWeakAreas ? performanceData.weakAreas.length : 3).map((area, idx) => (
+                            <div key={idx} className="flex justify-between items-center p-3 bg-orange-50 rounded-lg">
+                              <span className="text-sm font-medium text-gray-700">{area.topic}</span>
+                              <span className="text-sm font-bold text-orange-600">{Math.round(area.average)}%</span>
+                            </div>
+                          ))}
+                        </div>
+                        {performanceData.weakAreas.length > 3 && (
+                          <button
+                            onClick={() => setShowAllWeakAreas(!showAllWeakAreas)}
+                            className="w-full mt-3 px-4 py-2 text-orange-600 hover:bg-orange-50 rounded-lg text-sm font-medium transition-colors"
+                          >
+                            {showAllWeakAreas ? 'Show Less' : `View All (${performanceData.weakAreas.length})`}
+                          </button>
+                        )}
+                      </>
                     )}
                   </div>
                 </div>

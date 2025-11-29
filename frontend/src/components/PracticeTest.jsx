@@ -48,6 +48,8 @@ function PracticeTest({ onNavigate }) {
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedExams, setSelectedExams] = useState([]);
   const [longPressTimer, setLongPressTimer] = useState(null);
+  const [showAchievementBadge, setShowAchievementBadge] = useState(false);
+  const [achievementData, setAchievementData] = useState(null);
   const optionsMenuRef = useRef(null);
 
   const subjects = [
@@ -71,7 +73,7 @@ function PracticeTest({ onNavigate }) {
 
   const languages = [
     "English",
-    "Bengali",
+    "Bangla",
     // More languages will be added soon...
   ];
 
@@ -83,6 +85,16 @@ function PracticeTest({ onNavigate }) {
 
   useEffect(() => {
     loadExams();
+  }, [userId]);
+
+  // Check for examId in URL params and load exam results
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const examId = urlParams.get('examId');
+    
+    if (examId && userId) {
+      loadExamResults(examId);
+    }
   }, [userId]);
 
   // Debug: Log exams when they load
@@ -120,6 +132,19 @@ function PracticeTest({ onNavigate }) {
       console.error("Failed to load exams:", error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadExamResults = async (examId) => {
+    try {
+      const examData = await apiService.getExam(examId);
+      if (examData) {
+        setExamResults(examData);
+        setShowResults(true);
+      }
+    } catch (error) {
+      console.error("Failed to load exam results:", error);
+      alert("❌ Failed to load exam results. Please try again.");
     }
   };
 
@@ -221,10 +246,15 @@ function PracticeTest({ onNavigate }) {
 
     try {
       setSubmitting(true);
+      console.log('📤 Submitting exam:', activeExam.id || activeExam._id);
+      console.log('📝 User answers:', userAnswers);
+      
       const result = await apiService.submitExam({
         exam_id: activeExam.id || activeExam._id,
         answers: userAnswers
       });
+      
+      console.log('✅ Submit result:', result);
       
       if (result.success) {
         setActiveExam(null);
@@ -233,7 +263,82 @@ function PracticeTest({ onNavigate }) {
         const examData = await apiService.getExam(activeExam.id || activeExam._id);
         setExamResults(examData);
         setShowResults(true);
-        loadExams(); // Refresh the exam list
+        
+        // Refresh exam list
+        await loadExams();
+        
+        // Check for achievements (wrapped in try-catch to not break the flow)
+        try {
+          const response = await apiService.getUserExams(userId);
+          const allExams = response.exams || response || [];
+          const completedCount = allExams.filter(e => getActualStatus(e) === "completed").length;
+          
+          console.log(`✅ Total completed exams: ${completedCount}`);
+          console.log(`📊 Current exam score: ${examData.score}`);
+          
+          // Check for high score achievement first (80% or higher)
+          if (examData.score >= 80) {
+            setAchievementData({
+              title: "🌟 Well Done!",
+              message: `Excellent performance! You scored ${examData.score}% on this exam. Keep up the great work!`,
+              icon: "🎯"
+            });
+            setShowAchievementBadge(true);
+          }
+          // Otherwise check milestone achievements (only exact milestones)
+          else if (completedCount === 1) {
+            setAchievementData({
+              title: "🎉 First Exam Completed!",
+              message: "Congratulations! You've completed your first practice test. Keep going!",
+              icon: "🏆"
+            });
+            setShowAchievementBadge(true);
+          } else if (completedCount === 5) {
+            setAchievementData({
+              title: "🌟 5 Exams Milestone!",
+              message: "Amazing! You've completed 5 practice tests. You're on fire!",
+              icon: "⭐"
+            });
+            setShowAchievementBadge(true);
+          } else if (completedCount === 10) {
+            setAchievementData({
+              title: "💎 10 Exams Champion!",
+              message: "Incredible! You've completed 10 practice tests. You're a true champion!",
+              icon: "💎"
+            });
+            setShowAchievementBadge(true);
+          } else if (completedCount === 20) {
+            setAchievementData({
+              title: "🔥 20 Exams Completed!",
+              message: "Unstoppable! You've completed 20 practice tests. Keep pushing!",
+              icon: "🔥"
+            });
+            setShowAchievementBadge(true);
+          } else if (completedCount === 30) {
+            setAchievementData({
+              title: "⚡ 30 Exams Master!",
+              message: "Phenomenal! You've completed 30 practice tests. You're a true master!",
+              icon: "⚡"
+            });
+            setShowAchievementBadge(true);
+          } else if (completedCount === 50) {
+            setAchievementData({
+              title: "👑 50 Exams Legend!",
+              message: "Legendary! You've completed 50 practice tests. You're unstoppable!",
+              icon: "👑"
+            });
+            setShowAchievementBadge(true);
+          } else if (completedCount === 100) {
+            setAchievementData({
+              title: "🌟 100 Exams Elite!",
+              message: "Elite status achieved! You've completed 100 practice tests. You're in a class of your own!",
+              icon: "🌟"
+            });
+            setShowAchievementBadge(true);
+          }
+        } catch (achievementError) {
+          console.error("Achievement check error (non-critical):", achievementError);
+        }
       }
     } catch (error) {
       console.error("Failed to submit exam:", error);
@@ -726,6 +831,20 @@ function PracticeTest({ onNavigate }) {
                               </button>
                             </div>
                           )}
+                          
+                          <div className="border-t border-gray-100 my-1"></div>
+                          
+                          {/* View History option */}
+                          <button
+                            onClick={() => {
+                              onNavigate("history");
+                              setShowOptionsMenu(false);
+                              setShowSortSubmenu(false);
+                            }}
+                            className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                          >
+                            View History
+                          </button>
                           
                           <div className="border-t border-gray-100 my-1"></div>
                           
@@ -1271,6 +1390,44 @@ function PracticeTest({ onNavigate }) {
                 Close Results
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Achievement Badge Modal */}
+      {showAchievementBadge && achievementData && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 animate-fadeIn">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8 text-center transform scale-100">
+            {/* Achievement Icon */}
+            <div className="text-8xl mb-4">
+              {achievementData.icon}
+            </div>
+            
+            {/* Achievement Title */}
+            <h2 className="text-3xl font-bold text-gray-800 mb-3">
+              {achievementData.title}
+            </h2>
+            
+            {/* Achievement Message */}
+            <p className="text-gray-600 text-lg mb-6">
+              {achievementData.message}
+            </p>
+            
+            {/* Confetti Effect */}
+            <div className="mb-6 text-4xl">
+              🎊 🎉 🎊
+            </div>
+            
+            {/* Close Button */}
+            <button
+              onClick={() => {
+                setShowAchievementBadge(false);
+                setAchievementData(null);
+              }}
+              className="px-8 py-3 bg-gradient-to-r from-red-600 to-pink-600 text-white rounded-xl font-medium hover:from-red-700 hover:to-pink-700 transition-all transform hover:scale-105 shadow-lg"
+            >
+              Awesome! Continue
+            </button>
           </div>
         </div>
       )}

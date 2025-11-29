@@ -334,29 +334,42 @@ Continue for all {num_questions} questions. Use EXACTLY this format with "Questi
             line = line.strip()
             if not line:
                 continue
-                
-            if line.startswith('Question'):
+            
+            # More flexible question detection (supports multiple languages)
+            # Matches: "Question 1:", "প্রশ্ন ১:", "सवाल 1:", etc.
+            if any(marker in line.lower() for marker in ['question', 'প্রশ্ন', 'सवाल', 'pregunta', 'frage']) and (':' in line or '।' in line):
                 # Save previous question if exists
                 if current and current.get("question"):
                     questions.append(current)
                 
-                # Start new question
-                question_text = line.split(':', 1)[1].strip() if ':' in line else ""
+                # Start new question - extract text after colon or Bengali danda
+                separator = ':' if ':' in line else '।'
+                question_text = line.split(separator, 1)[1].strip() if separator in line else ""
                 current = {"question": question_text, "options": [], "question_lines": []}
                 question_lines = [question_text] if question_text else []
                 
-            elif line.startswith(('A)', 'B)', 'C)', 'D)')):
+            elif line.startswith(('A)', 'B)', 'C)', 'D)', 'a)', 'b)', 'c)', 'd)', 
+                                  'A.', 'B.', 'C.', 'D.', 'ক)', 'খ)', 'গ)', 'ঘ)')):
                 # If we were collecting question lines, join them
                 if question_lines and current:
                     current["question"] = " ".join(question_lines).strip()
                     question_lines = []
-                current.get("options", []).append(line[2:].strip())
+                # Extract option text (handle different formats)
+                option_text = line[2:].strip() if len(line) > 2 else line
+                current.get("options", []).append(option_text)
                 
-            elif line.startswith('Correct:'):
-                current["correct"] = line.split(':', 1)[1].strip()[0].upper()  # Get first letter
+            elif any(marker in line.lower() for marker in ['correct', 'উত্তর', 'answer', 'সঠিক']):
+                # Extract the correct answer letter
+                answer_part = line.split(':', 1)[1].strip() if ':' in line else line.split('।', 1)[1].strip() if '।' in line else line
+                # Get first letter/character that looks like an answer
+                for char in answer_part.upper():
+                    if char in 'ABCD' or char in 'কখগঘ':
+                        current["correct"] = char if char in 'ABCD' else {'ক': 'A', 'খ': 'B', 'গ': 'C', 'ঘ': 'D'}.get(char, 'A')
+                        break
                 
-            elif line.startswith('Explanation:'):
-                current["explanation"] = line.split(':', 1)[1].strip()
+            elif any(marker in line.lower() for marker in ['explanation', 'ব্যাখ্যা', 'व्याख्या']):
+                separator = ':' if ':' in line else '।'
+                current["explanation"] = line.split(separator, 1)[1].strip() if separator in line else ""
                 
             else:
                 # If we're building a question and haven't hit options yet
@@ -376,6 +389,7 @@ Continue for all {num_questions} questions. Use EXACTLY this format with "Questi
         logger.info(f"✅ Parsed {len(valid_questions)} valid questions from AI response")
         if not valid_questions:
             logger.warning(f"⚠️  No valid questions parsed! Raw questions found: {len(questions)}")
+            logger.warning(f"⚠️  First raw question: {questions[0] if questions else 'None'}")
             logger.warning(f"⚠️  Falling back to demo exam")
         
         return valid_questions if valid_questions else self._demo_exam("the topic", 3)

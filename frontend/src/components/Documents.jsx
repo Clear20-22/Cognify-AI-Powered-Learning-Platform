@@ -247,7 +247,7 @@ function Documents({ onNavigate }) {
 
   const handleDelete = async (docId) => {
     try {
-      const result = await apiService.deleteDocument(docId);
+      const result = await apiService.deleteDocument(docId, userId);
       if (result.success) {
         setDocuments(documents.filter((d) => d.id !== docId));
         setDeleteConfirm(null);
@@ -267,7 +267,7 @@ function Documents({ onNavigate }) {
       
       // For quiz action, first check if there's a previous attempt
       if (action === "generate_quiz") {
-        const attemptResult = await apiService.getLatestQuizAttempt(docId);
+        const attemptResult = await apiService.getLatestQuizAttempt(docId, userId);
         console.log("Quiz attempt result:", attemptResult);
         
         if (attemptResult.success && attemptResult.attempt) {
@@ -306,7 +306,7 @@ function Documents({ onNavigate }) {
         }
       }
       
-      const result = await apiService.processDocument(docId, action);
+      const result = await apiService.processDocument(docId, userId, action);
       if (result.success) {
         // Show results in modal
         const actionTitles = {
@@ -375,7 +375,7 @@ function Documents({ onNavigate }) {
     
     // Save quiz attempt to backend
     try {
-      await apiService.submitQuiz(resultData.documentId, questions, quizAnswers);
+      await apiService.submitQuiz(resultData.documentId, userId, questions, quizAnswers);
     } catch (error) {
       console.error("Failed to save quiz attempt:", error);
       // Don't show error to user, just log it
@@ -1262,9 +1262,19 @@ function Documents({ onNavigate }) {
             </div>
 
             <div className="flex-1 overflow-hidden">
-              {viewPdfModal.file_type === "pdf" ? (
+              {(() => {
+                console.log('🔍 PDF Modal - userId:', userId, 'viewPdfModal.id:', viewPdfModal.id);
+                const pdfUrl = apiService.getDocumentFileUrl(viewPdfModal.id, userId);
+                console.log('📎 PDF URL:', pdfUrl);
+                return null;
+              })()}
+              {!userId ? (
+                <div className="flex items-center justify-center h-full">
+                  <p className="text-gray-500">Loading user information...</p>
+                </div>
+              ) : viewPdfModal.file_type === "pdf" ? (
                 <iframe
-                  src={apiService.getDocumentFileUrl(viewPdfModal.id)}
+                  src={apiService.getDocumentFileUrl(viewPdfModal.id, userId)}
                   className="w-full h-full"
                   title={viewPdfModal.filename}
                 />
@@ -1276,7 +1286,7 @@ function Documents({ onNavigate }) {
                       PPTX files cannot be previewed directly.
                     </p>
                     <a
-                      href={apiService.getDocumentFileUrl(viewPdfModal.id)}
+                      href={apiService.getDocumentFileUrl(viewPdfModal.id, userId)}
                       download={viewPdfModal.filename}
                       className="inline-flex items-center px-6 py-3 bg-indigo-600 text-white rounded-xl font-medium hover:bg-indigo-700 transition-colors"
                     >

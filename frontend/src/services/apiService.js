@@ -476,11 +476,14 @@ class ApiService {
       formData.append('file', file);
 
       const token = localStorage.getItem('access_token');
-      const response = await fetch(`${this.baseURL}/api/documents/upload`, {
+      const headers = {};
+      if (token && token !== 'demo-token') {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+      
+      const response = await fetch(`${this.baseURL}/api/documents/upload?user_id=${userId}`, {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        },
+        headers: headers,
         body: formData
       });
 
@@ -499,12 +502,14 @@ class ApiService {
   async getUserDocuments(userId) {
     try {
       const token = localStorage.getItem('access_token');
-      const response = await fetch(`${this.baseURL}/api/documents/`, {
+      const headers = { 'Content-Type': 'application/json' };
+      if (token && token !== 'demo-token') {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+      
+      const response = await fetch(`${this.baseURL}/api/documents/?user_id=${userId}`, {
         method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
+        headers: headers
       });
 
       if (!response.ok) {
@@ -519,15 +524,17 @@ class ApiService {
     }
   }
 
-  async getDocument(docId) {
+  async getDocument(docId, userId) {
     try {
       const token = localStorage.getItem('access_token');
-      const response = await fetch(`${this.baseURL}/api/documents/${docId}`, {
+      const headers = { 'Content-Type': 'application/json' };
+      if (token && token !== 'demo-token') {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+      
+      const response = await fetch(`${this.baseURL}/api/documents/${docId}?user_id=${userId}`, {
         method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
+        headers: headers
       });
 
       if (!response.ok) {
@@ -542,15 +549,17 @@ class ApiService {
     }
   }
 
-  async deleteDocument(docId) {
+  async deleteDocument(docId, userId) {
     try {
       const token = localStorage.getItem('access_token');
-      const response = await fetch(`${this.baseURL}/api/documents/${docId}`, {
+      const headers = { 'Content-Type': 'application/json' };
+      if (token && token !== 'demo-token') {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+      
+      const response = await fetch(`${this.baseURL}/api/documents/${docId}?user_id=${userId}`, {
         method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
+        headers: headers
       });
 
       if (!response.ok) {
@@ -564,15 +573,17 @@ class ApiService {
     }
   }
 
-  async processDocument(docId, action, options = {}) {
+  async processDocument(docId, userId, action, options = {}) {
     try {
       const token = localStorage.getItem('access_token');
-      const response = await fetch(`${this.baseURL}/api/documents/${docId}/process`, {
+      const headers = { 'Content-Type': 'application/json' };
+      if (token && token !== 'demo-token') {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+      
+      const response = await fetch(`${this.baseURL}/api/documents/${docId}/process?user_id=${userId}`, {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
+        headers: headers,
         body: JSON.stringify({ action, options })
       });
 
@@ -588,22 +599,27 @@ class ApiService {
     }
   }
 
-  getDocumentFileUrl(docId) {
-    const token = localStorage.getItem('access_token');
-    return `${this.baseURL}/api/documents/${docId}/file?token=${token}`;
+  getDocumentFileUrl(docId, userId) {
+    console.log('🔍 getDocumentFileUrl - docId:', docId, 'userId:', userId);
+    // Always include user_id in the URL for reliability
+    const url = `${this.baseURL}/api/documents/${docId}/file?user_id=${userId}`;
+    console.log('📎 PDF URL:', url);
+    return url;
   }
 
-  async submitQuiz(docId, questions, userAnswers) {
+  async submitQuiz(docId, userId, questions, userAnswers) {
     try {
       const token = localStorage.getItem('access_token');
+      const headers = { 'Content-Type': 'application/json' };
+      if (token && token !== 'demo-token') {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+      
       console.log('💾 Submitting quiz for doc:', docId, 'with', Object.keys(userAnswers).length, 'answers');
       
-      const response = await fetch(`${this.baseURL}/api/documents/${docId}/quiz/submit`, {
+      const response = await fetch(`${this.baseURL}/api/documents/${docId}/quiz/submit?user_id=${userId}`, {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
+        headers: headers,
         body: JSON.stringify({
           document_id: docId,
           questions: questions,
@@ -625,17 +641,19 @@ class ApiService {
     }
   }
 
-  async getLatestQuizAttempt(docId) {
+  async getLatestQuizAttempt(docId, userId) {
     try {
       const token = localStorage.getItem('access_token');
+      const headers = { 'Content-Type': 'application/json' };
+      if (token && token !== 'demo-token') {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+      
       console.log('🔍 Fetching latest quiz attempt for doc:', docId);
       
-      const response = await fetch(`${this.baseURL}/api/documents/${docId}/quiz/latest`, {
+      const response = await fetch(`${this.baseURL}/api/documents/${docId}/quiz/latest?user_id=${userId}`, {
         method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
+        headers: headers
       });
 
       if (!response.ok) {

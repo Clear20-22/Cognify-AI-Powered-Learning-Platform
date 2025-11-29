@@ -7,6 +7,7 @@ import Notes from "./components/Notes";
 import Documents from "./components/Documents";
 import History from "./components/History";
 import Performance from "./components/Performance";
+import StudyPatterns from "./components/StudyPatterns";
 import PracticeTest from "./components/PracticeTest";
 import AuthModal from "./components/AuthModal";
 import { AuthProvider, useAuth } from "./hooks/useAuth.jsx";
@@ -136,6 +137,16 @@ function AppContent() {
           element={
             user ? (
               <Performance onNavigate={handleNavigate} />
+            ) : (
+              <Navigate to="/" replace />
+            )
+          }
+        />
+        <Route
+          path="/studypatterns"
+          element={
+            user ? (
+              <StudyPatterns onNavigate={handleNavigate} />
             ) : (
               <Navigate to="/" replace />
             )
