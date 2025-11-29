@@ -24,7 +24,8 @@ class ExamService:
         user_id: str,
         topic: str,
         difficulty: str = "intermediate",
-        num_questions: int = 5
+        num_questions: int = 5,
+        language: str = "English"
     ) -> Dict[str, Any]:
         """
         Create a new adaptive exam on a topic.
@@ -34,16 +35,20 @@ class ExamService:
             topic: Exam topic
             difficulty: Difficulty level (beginner, intermediate, advanced)
             num_questions: Number of questions (1-20)
+            language: Language for questions (default: English)
             
         Returns:
             Dictionary with exam data (questions without answers)
         """
         try:
+            logger.info(f"📝 Creating exam for user {user_id}: topic='{topic}', difficulty='{difficulty}', questions={num_questions}, language='{language}'")
+            
             # Generate exam questions
             questions = self.ai_service.generate_exam_questions(
                 topic=topic,
                 difficulty=difficulty,
-                num_questions=num_questions
+                num_questions=num_questions,
+                language=language
             )
             
             # Create exam in store
@@ -268,3 +273,26 @@ class ExamService:
             List of user's exams
         """
         return await self.data_store.get_user_exams(user_id)
+    
+    async def delete_exam(self, exam_id: str) -> bool:
+        """
+        Delete an exam.
+        
+        Args:
+            exam_id: Exam identifier
+            
+        Returns:
+            True if exam was deleted, False if not found
+        """
+        try:
+            exam = await self.data_store.get_exam(exam_id)
+            if not exam:
+                return False
+            
+            await self.data_store.delete_exam(exam_id)
+            logger.info(f"Exam {exam_id} deleted successfully")
+            return True
+        except Exception as e:
+            logger.error(f"Delete exam error: {e}")
+            raise
+

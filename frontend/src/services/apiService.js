@@ -334,6 +334,31 @@ class ApiService {
     }
   }
 
+  async deleteExam(examId) {
+    try {
+      const response = await fetch(`${this.baseURL}/api/exams/${examId}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      // DELETE may return 204 No Content or a success response
+      if (response.status === 204) {
+        return { success: true };
+      }
+      
+      return await response.json();
+    } catch (error) {
+      console.error('API Error:', error);
+      throw new Error(`Failed to delete exam: ${error.message}`);
+    }
+  }
+
   // Notes API methods
   async saveNote(userId, content, chatId = null, pdfName = null, tags = []) {
     try {

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useAuth, useUserId } from "../hooks/useAuth.jsx";
 import { apiService } from "../services/apiService.js";
 import Avatar from "./Avatar";
@@ -18,6 +18,8 @@ import {
   PlayIcon,
   TrophyIcon,
   MagnifyingGlassIcon,
+  EllipsisVerticalIcon,
+  TrashIcon,
 } from "@heroicons/react/24/outline";
 
 function PracticeTest({ onNavigate }) {
@@ -29,6 +31,7 @@ function PracticeTest({ onNavigate }) {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [selectedSubject, setSelectedSubject] = useState("");
   const [selectedDifficulty, setSelectedDifficulty] = useState("intermediate");
+  const [selectedLanguage, setSelectedLanguage] = useState("English");
   const [numQuestions, setNumQuestions] = useState(5);
   const [creating, setCreating] = useState(false);
   const [activeExam, setActiveExam] = useState(null);
@@ -39,6 +42,13 @@ function PracticeTest({ onNavigate }) {
   const [examResults, setExamResults] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [showOptionsMenu, setShowOptionsMenu] = useState(false);
+  const [showSortSubmenu, setShowSortSubmenu] = useState(false);
+  const [sortBy, setSortBy] = useState("date"); // date, score, name
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [selectedExams, setSelectedExams] = useState([]);
+  const [longPressTimer, setLongPressTimer] = useState(null);
+  const optionsMenuRef = useRef(null);
 
   const subjects = [
     "Mathematics",
@@ -59,6 +69,12 @@ function PracticeTest({ onNavigate }) {
     { value: "advanced", label: "Advanced", color: "red" },
   ];
 
+  const languages = [
+    "English",
+    "Bengali",
+    // More languages will be added soon...
+  ];
+
   // Helper function to get actual exam status - MUST be before useEffect
   const getActualStatus = (exam) => {
     const hasScore = exam.score !== undefined && exam.score !== null;
@@ -73,6 +89,23 @@ function PracticeTest({ onNavigate }) {
   useEffect(() => {
     // Removed debug logging
   }, [exams]);
+
+  // Close options menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (optionsMenuRef.current && !optionsMenuRef.current.contains(event.target)) {
+        setShowOptionsMenu(false);
+      }
+    };
+
+    if (showOptionsMenu) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showOptionsMenu]);
 
   const loadExams = async () => {
     if (!userId) return;
@@ -102,7 +135,8 @@ function PracticeTest({ onNavigate }) {
         user_id: userId,
         topic: selectedSubject,
         difficulty: selectedDifficulty,
-        num_questions: numQuestions
+        num_questions: numQuestions,
+        language: selectedLanguage
       });
       
       if (result) {
@@ -110,6 +144,7 @@ function PracticeTest({ onNavigate }) {
         setShowCreateModal(false);
         setSelectedSubject("");
         setSelectedDifficulty("intermediate");
+        setSelectedLanguage("English");
         setNumQuestions(5);
         loadExams();
       }
@@ -220,6 +255,55 @@ function PracticeTest({ onNavigate }) {
     loadExams(); // Refresh to show updated status
   };
 
+  const handleDeleteSelected = async () => {
+    if (selectedExams.length === 0) return;
+    
+    if (!window.confirm(`Are you sure you want to delete ${selectedExams.length} test(s)? This action cannot be undone.`)) {
+      return;
+    }
+    
+    try {
+      // Delete each selected exam
+      for (const examId of selectedExams) {
+        await apiService.deleteExam(examId);
+      }
+      
+      alert(`✅ Successfully deleted ${selectedExams.length} test(s)!`);
+      setSelectedExams([]);
+      setSelectionMode(false);
+      loadExams();
+    } catch (error) {
+      console.error("Failed to delete exams:", error);
+      alert("❌ Failed to delete some tests. Please try again.");
+    }
+  };
+
+  const toggleExamSelection = (examId) => {
+    setSelectedExams(prev => 
+      prev.includes(examId) 
+        ? prev.filter(id => id !== examId)
+        : [...prev, examId]
+    );
+  };
+
+  const handleLongPressStart = (examId) => {
+    const timer = setTimeout(() => {
+      // Enter selection mode and select this exam
+      if (!selectionMode) {
+        setSelectionMode(true);
+      }
+      toggleExamSelection(examId);
+    }, 500); // 500ms long press
+    setLongPressTimer(timer);
+  };
+
+  const handleLongPressEnd = () => {
+    if (longPressTimer) {
+      clearTimeout(longPressTimer);
+      setLongPressTimer(null);
+    }
+  };
+
   const getAnswerText = (answerLetter, options) => {
     if (!answerLetter || !options || options.length === 0) {
       return answerLetter || "Not answered";
@@ -262,7 +346,7 @@ function PracticeTest({ onNavigate }) {
     );
   };
 
-  // Filter exams based on search query
+  // Filter and sort exams based on search query and sort option
   const filteredExams = exams.filter((exam) => {
     const topic = (exam.topic || exam.title || "").toLowerCase();
     const difficulty = (exam.difficulty || "").toLowerCase();
@@ -286,6 +370,20 @@ function PracticeTest({ onNavigate }) {
     }
     
     return matchesSearch && matchesStatus;
+  }).sort((a, b) => {
+    // Sort based on selected option
+    if (sortBy === "date") {
+      return new Date(b.created_at || b.date) - new Date(a.created_at || a.date);
+    } else if (sortBy === "score") {
+      const scoreA = a.score || 0;
+      const scoreB = b.score || 0;
+      return scoreB - scoreA;
+    } else if (sortBy === "name") {
+      const nameA = (a.topic || a.title || "").toLowerCase();
+      const nameB = (b.topic || b.title || "").toLowerCase();
+      return nameA.localeCompare(nameB);
+    }
+    return 0;
   });
 
   return (
@@ -507,48 +605,174 @@ function PracticeTest({ onNavigate }) {
                 </div>
 
                 {/* Status Filter Buttons */}
-                <div className="flex flex-wrap gap-2">
-                  <button
-                    onClick={() => setStatusFilter("all")}
-                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                      statusFilter === "all"
-                        ? "bg-red-600 text-white"
-                        : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                    }`}
-                  >
-                    All Tests
-                  </button>
-                  <button
-                    onClick={() => setStatusFilter("completed")}
-                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                      statusFilter === "completed"
-                        ? "bg-green-600 text-white"
-                        : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                    }`}
-                  >
-                    Completed
-                  </button>
-                  <button
-                    onClick={() => setStatusFilter("unattempted")}
-                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                      statusFilter === "unattempted"
-                        ? "bg-yellow-600 text-white"
-                        : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                    }`}
-                  >
-                    Unattempted
-                  </button>
-                  <button
-                    onClick={() => setStatusFilter("in_progress")}
-                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                      statusFilter === "in_progress"
-                        ? "bg-blue-600 text-white"
-                        : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                    }`}
-                  >
-                    In Progress
-                  </button>
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      onClick={() => setStatusFilter("all")}
+                      className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                        statusFilter === "all"
+                          ? "bg-red-600 text-white"
+                          : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                      }`}
+                    >
+                      All Tests
+                    </button>
+                    <button
+                      onClick={() => setStatusFilter("completed")}
+                      className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                        statusFilter === "completed"
+                          ? "bg-green-600 text-white"
+                          : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                      }`}
+                    >
+                      Completed
+                    </button>
+                    <button
+                      onClick={() => setStatusFilter("unattempted")}
+                      className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                        statusFilter === "unattempted"
+                          ? "bg-yellow-600 text-white"
+                          : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                      }`}
+                    >
+                      Unattempted
+                    </button>
+                    <button
+                      onClick={() => setStatusFilter("in_progress")}
+                      className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                        statusFilter === "in_progress"
+                          ? "bg-blue-600 text-white"
+                          : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                      }`}
+                    >
+                      In Progress
+                    </button>
+                  </div>
+                  
+                  {/* Three-dot menu */}
+                  <div className="relative" ref={optionsMenuRef}>
+                    <button
+                      onClick={() => setShowOptionsMenu(!showOptionsMenu)}
+                      className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                    >
+                      <EllipsisVerticalIcon className="w-5 h-5 text-gray-600" />
+                    </button>
+                    
+                    {/* Dropdown menu */}
+                    {showOptionsMenu && (
+                      <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-10">
+                        <div className="py-1">
+                          {/* Sort By button */}
+                          <button
+                            onClick={() => setShowSortSubmenu(!showSortSubmenu)}
+                            className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors flex items-center justify-between"
+                          >
+                            <span>Sort By</span>
+                            <svg
+                              className={`w-4 h-4 transition-transform ${
+                                showSortSubmenu ? "rotate-180" : ""
+                              }`}
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M19 9l-7 7-7-7"
+                              />
+                            </svg>
+                          </button>
+                          
+                          {/* Sort submenu */}
+                          {showSortSubmenu && (
+                            <div className="bg-gray-50 border-l-2 border-red-500">
+                              <button
+                                onClick={() => {
+                                  setSortBy("date");
+                                  setShowOptionsMenu(false);
+                                  setShowSortSubmenu(false);
+                                }}
+                                className={`w-full text-left px-6 py-2 text-sm hover:bg-gray-100 transition-colors ${
+                                  sortBy === "date" ? "text-red-600 font-medium" : "text-gray-700"
+                                }`}
+                              >
+                                Date Created
+                              </button>
+                              <button
+                                onClick={() => {
+                                  setSortBy("score");
+                                  setShowOptionsMenu(false);
+                                  setShowSortSubmenu(false);
+                                }}
+                                className={`w-full text-left px-6 py-2 text-sm hover:bg-gray-100 transition-colors ${
+                                  sortBy === "score" ? "text-red-600 font-medium" : "text-gray-700"
+                                }`}
+                              >
+                                Score (High to Low)
+                              </button>
+                              <button
+                                onClick={() => {
+                                  setSortBy("name");
+                                  setShowOptionsMenu(false);
+                                  setShowSortSubmenu(false);
+                                }}
+                                className={`w-full text-left px-6 py-2 text-sm hover:bg-gray-100 transition-colors ${
+                                  sortBy === "name" ? "text-red-600 font-medium" : "text-gray-700"
+                                }`}
+                              >
+                                Name (A-Z)
+                              </button>
+                            </div>
+                          )}
+                          
+                          <div className="border-t border-gray-100 my-1"></div>
+                          
+                          {/* Select option */}
+                          <button
+                            onClick={() => {
+                              setSelectionMode(!selectionMode);
+                              setSelectedExams([]);
+                              setShowOptionsMenu(false);
+                              setShowSortSubmenu(false);
+                            }}
+                            className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                          >
+                            {selectionMode ? "Cancel Selection" : "Select Tests"}
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
+              </div>
+            )}
+
+            {/* Selection mode actions */}
+            {selectionMode && filteredExams.length > 0 && (
+              <div className="mb-4 flex items-center justify-between bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <div className="flex items-center space-x-4">
+                  <span className="text-sm font-medium text-gray-700">
+                    {selectedExams.length} test(s) selected
+                  </span>
+                  {selectedExams.length > 0 && (
+                    <button
+                      onClick={() => setSelectedExams([])}
+                      className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+                    >
+                      Clear Selection
+                    </button>
+                  )}
+                </div>
+                <button
+                  onClick={handleDeleteSelected}
+                  disabled={selectedExams.length === 0}
+                  className="flex items-center space-x-2 px-4 py-2 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <TrashIcon className="w-4 h-4" />
+                  <span>Delete Selected</span>
+                </button>
               </div>
             )}
 
@@ -598,9 +822,28 @@ function PracticeTest({ onNavigate }) {
                   return (
                   <div
                     key={exam.id || exam.exam_id}
-                    className="border border-gray-200 rounded-xl p-6 hover:shadow-md transition-all cursor-pointer"
+                    className={`border rounded-xl p-6 hover:shadow-md transition-all ${
+                      selectionMode ? "cursor-default" : "cursor-pointer"
+                    } ${
+                      selectedExams.includes(exam.id || exam.exam_id)
+                        ? "border-red-500 bg-red-50"
+                        : "border-gray-200"
+                    }`}
+                    onMouseDown={() => handleLongPressStart(exam.id || exam.exam_id)}
+                    onMouseUp={handleLongPressEnd}
+                    onMouseLeave={handleLongPressEnd}
+                    onTouchStart={() => handleLongPressStart(exam.id || exam.exam_id)}
+                    onTouchEnd={handleLongPressEnd}
                   >
                     <div className="flex items-start justify-between mb-4">
+                      {selectionMode && (
+                        <input
+                          type="checkbox"
+                          checked={selectedExams.includes(exam.id || exam.exam_id)}
+                          onChange={() => toggleExamSelection(exam.id || exam.exam_id)}
+                          className="mr-3 mt-1 w-4 h-4 text-red-600 rounded focus:ring-red-500"
+                        />
+                      )}
                       <div className="flex-1">
                         <h3 className="font-semibold text-gray-800 mb-2">
                           {exam.topic || exam.title || "Practice Test"}
@@ -628,12 +871,14 @@ function PracticeTest({ onNavigate }) {
                       </div>
                     )}
 
-                    <button
-                      onClick={() => handleContinueTest(exam)}
-                      className="w-full px-4 py-2 bg-red-50 text-red-600 rounded-lg text-sm font-medium hover:bg-red-100 transition-colors"
-                    >
-                      {actualStatus === "completed" ? "Review Answers" : "Continue Test"}
-                    </button>
+                    {!selectionMode && (
+                      <button
+                        onClick={() => handleContinueTest(exam)}
+                        className="w-full px-4 py-2 bg-red-50 text-red-600 rounded-lg text-sm font-medium hover:bg-red-100 transition-colors"
+                      >
+                        {actualStatus === "completed" ? "Review Answers" : "Continue Test"}
+                      </button>
+                    )}
                   </div>
                   );
                 })}
@@ -692,6 +937,24 @@ function PracticeTest({ onNavigate }) {
                     </button>
                   ))}
                 </div>
+              </div>
+
+              {/* Language Selection */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Language
+                </label>
+                <select
+                  value={selectedLanguage}
+                  onChange={(e) => setSelectedLanguage(e.target.value)}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500 bg-white"
+                >
+                  {languages.map((lang) => (
+                    <option key={lang} value={lang}>
+                      {lang}
+                    </option>
+                  ))}
+                </select>
               </div>
 
               {/* Number of Questions */}

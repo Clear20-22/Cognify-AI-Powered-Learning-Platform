@@ -242,57 +242,90 @@ Make it natural and educational."""
         self,
         topic: str,
         difficulty: str = "intermediate",
-        num_questions: int = 5
+        num_questions: int = 5,
+        language: str = "English"
     ) -> List[Dict[str, Any]]:
         """Generate exam questions on a topic."""
+        logger.info(f"📝 Generating exam: topic='{topic}', difficulty='{difficulty}', questions={num_questions}, language='{language}'")
+        
         if not self.active_provider:
+            logger.warning(f"⚠️  No AI provider available. Using demo exam (English only)")
             return self._demo_exam(topic, num_questions)
         
-        prompt = f"""Create {num_questions} {difficulty} level exam questions about {topic}.
+        # Create language-specific instruction
+        if language != "English":
+            language_instruction = f"\n\nIMPORTANT: You MUST write ALL content (questions, options, explanations) in {language} language. Do not use English."
+            system_message = f"You are an expert exam creator. You MUST create all content in {language} language only."
+        else:
+            language_instruction = ""
+            system_message = "You are an expert exam creator for educational purposes."
+        
+        prompt = f"""Create {num_questions} {difficulty} level exam questions about {topic}.{language_instruction}
 
-For each question provide:
-1. Question text
-2. Four answer options (A, B, C, D)
-3. Correct answer
-4. Brief explanation
+CRITICAL: You MUST use this EXACT format structure (but write the actual content in {language}):
 
-Format as JSON-like structure:
-Question 1: [text]
-A) [option]
-B) [option]
-C) [option]
-D) [option]
+Question 1: [your question text in {language}]
+A) [option in {language}]
+B) [option in {language}]
+C) [option in {language}]
+D) [option in {language}]
+Correct: [letter A, B, C, or D]
+Explanation: [explanation in {language}]
+
+Question 2: [your question text in {language}]
+A) [option in {language}]
+B) [option in {language}]
+C) [option in {language}]
+D) [option in {language}]
 Correct: [letter]
-Explanation: [text]"""
+Explanation: [explanation in {language}]
+
+Continue for all {num_questions} questions. Use EXACTLY this format with "Question X:", "A)", "B)", "C)", "D)", "Correct:", "Explanation:" labels in ENGLISH, but write the actual content in {language}."""
         
         # Try Groq first
         if self.groq_client:
             try:
+                logger.info(f"🤖 Using Groq AI to generate {language} questions...")
+                logger.debug(f"Groq prompt preview: {prompt[:200]}...")
                 response = self.groq_client.chat.completions.create(
                     model=self.groq_model_name,
                     messages=[
-                        {"role": "system", "content": "You are an expert exam creator for educational purposes."},
+                        {"role": "system", "content": system_message},
                         {"role": "user", "content": prompt}
                     ],
                     temperature=0.7,
                     max_tokens=2000
                 )
-                return self._parse_exam_questions(response.choices[0].message.content)
+                logger.info(f"✅ Groq API responded successfully")
+                raw_content = response.choices[0].message.content
+                logger.debug(f"Groq response preview: {raw_content[:200]}...")
+                result = self._parse_exam_questions(raw_content)
+                logger.info(f"✅ Groq successfully generated {len(result)} questions in {language}")
+                return result
             except Exception as e:
-                logger.error(f"Groq exam error, trying Gemini: {e}")
+                logger.error(f"❌ Groq exam error: {type(e).__name__}: {str(e)}")
+                logger.exception("Full Groq error traceback:")
+                logger.info("Trying Gemini fallback...")
         
         # Fallback to Gemini
         if self.gemini_model:
             try:
+                logger.info(f"🤖 Using Gemini AI to generate {language} questions...")
                 response = self.gemini_model.generate_content(prompt)
-                return self._parse_exam_questions(response.text)
+                result = self._parse_exam_questions(response.text)
+                logger.info(f"✅ Gemini successfully generated {len(result)} questions in {language}")
+                return result
             except Exception as e:
-                logger.error(f"Gemini exam error: {e}")
+                logger.error(f"❌ Gemini exam error: {e}")
         
+        logger.warning(f"⚠️  All AI providers failed. Using demo exam (English only)")
         return self._demo_exam(topic, num_questions)
     
     def _parse_exam_questions(self, text: str) -> List[Dict[str, Any]]:
         """Parse AI-generated exam questions."""
+        logger.debug(f"Parsing AI response (length: {len(text)} chars)")
+        logger.debug(f"First 500 chars of response: {text[:500]}")
+        
         questions = []
         current = {}
         question_lines = []
@@ -339,6 +372,11 @@ Explanation: [text]"""
         for q in questions:
             if q.get("question") and q.get("options") and len(q["options"]) >= 4 and q.get("correct"):
                 valid_questions.append(q)
+        
+        logger.info(f"✅ Parsed {len(valid_questions)} valid questions from AI response")
+        if not valid_questions:
+            logger.warning(f"⚠️  No valid questions parsed! Raw questions found: {len(questions)}")
+            logger.warning(f"⚠️  Falling back to demo exam")
         
         return valid_questions if valid_questions else self._demo_exam("the topic", 3)
     

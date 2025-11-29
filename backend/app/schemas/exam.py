@@ -13,6 +13,7 @@ class ExamCreateRequest(BaseModel):
     topic: str = Field(..., description="Exam topic", min_length=1)
     difficulty: str = Field(default="intermediate", description="Difficulty level: beginner, intermediate, advanced")
     num_questions: int = Field(default=5, description="Number of questions", ge=1, le=20)
+    language: str = Field(default="English", description="Language for questions")
     
     class Config:
         json_schema_extra = {
@@ -20,7 +21,8 @@ class ExamCreateRequest(BaseModel):
                 "user_id": "user_abc123",
                 "topic": "Data Structures",
                 "difficulty": "intermediate",
-                "num_questions": 5
+                "num_questions": 5,
+                "language": "English"
             }
         }
 

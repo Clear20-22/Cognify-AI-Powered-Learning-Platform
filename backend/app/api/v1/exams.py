@@ -31,13 +31,14 @@ async def create_exam(
     Generates personalized questions based on difficulty level.
     """
     try:
-        logger.info(f"📝 Creating exam: {request.topic} ({request.difficulty})")
+        logger.info(f"📝 Creating exam: {request.topic} ({request.difficulty}) in {request.language}")
         
         result = await exam_service.create_exam(
             user_id=request.user_id,
             topic=request.topic,
             difficulty=request.difficulty,
-            num_questions=request.num_questions
+            num_questions=request.num_questions,
+            language=request.language
         )
         
         # Convert questions to response format
@@ -160,3 +161,30 @@ async def get_exam(
         )
     
     return exam
+
+
+@router.delete("/{exam_id}")
+async def delete_exam(
+    exam_id: str,
+    exam_service: ExamService = Depends(get_exam_service)
+):
+    """Delete an exam."""
+    try:
+        result = await exam_service.delete_exam(exam_id)
+        
+        if not result:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Exam not found"
+            )
+        
+        return {"success": True, "message": "Exam deleted successfully"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Delete exam error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to delete exam: {str(e)}"
+        )
+
