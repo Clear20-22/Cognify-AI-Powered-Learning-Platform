@@ -232,7 +232,7 @@ function Notes({ onNavigate }) {
           </nav>
 
           {/* Bottom Section */}
-          <div className="border-t border-red-700 pt-4 space-y-2">
+          <div className="border-t border-red-700 pt-4">
             {/* Toggle Sidebar */}
             <button
               onClick={() => setSidebarOpen(!sidebarOpen)}
@@ -256,29 +256,6 @@ function Notes({ onNavigate }) {
               </svg>
               {sidebarOpen && <span>Close sidebar</span>}
             </button>
-
-            {/* User Profile */}
-            {user && (
-              <button className={`w-full flex items-center px-4 py-3 hover:bg-red-700 rounded-xl transition-colors ${
-                sidebarOpen ? "space-x-3" : "justify-center"
-              }`}>
-                <div className="flex-shrink-0">
-                  <Avatar
-                    src={null}
-                    alt={`${user.name || user.email?.split("@")[0] || "User"}'s avatar`}
-                    size="w-8 h-8"
-                    fallbackText={(user.name || user.email?.split("@")[0] || "U")[0].toUpperCase()}
-                  />
-                </div>
-                {sidebarOpen && (
-                  <div className="flex-1 min-w-0 text-left">
-                    <p className="text-sm font-medium text-white truncate">
-                      {user.name || user.email?.split("@")[0]}
-                    </p>
-                  </div>
-                )}
-              </button>
-            )}
           </div>
         </div>
       </aside>
