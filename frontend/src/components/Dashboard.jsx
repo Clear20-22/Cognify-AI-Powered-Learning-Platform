@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useAuth, useUserId } from "../hooks/useAuth.jsx";
 import { apiService } from "../services/apiService";
 import Avatar from "./Avatar";
+import Sidebar from "./Sidebar";
 import {
   SparklesIcon,
   ChatBubbleLeftRightIcon,
@@ -63,16 +64,25 @@ function Dashboard({ onNavigate }) {
         const exams = examsData.exams || [];
 
         // Calculate stats
-        const completedExams = exams.filter(e => e.status === 'completed' || e.score !== undefined);
-        const totalScore = completedExams.reduce((sum, exam) => sum + (exam.score || 0), 0);
-        const avgScore = completedExams.length > 0 ? Math.round(totalScore / completedExams.length) : 0;
+        const completedExams = exams.filter(
+          (e) => e.status === "completed" || e.score !== undefined
+        );
+        const totalScore = completedExams.reduce(
+          (sum, exam) => sum + (exam.score || 0),
+          0
+        );
+        const avgScore =
+          completedExams.length > 0
+            ? Math.round(totalScore / completedExams.length)
+            : 0;
 
         setStats({
           totalChats: chats.length,
           totalNotes: notes.length,
           totalExams: exams.length,
           studyStreak: 7, // TODO: Calculate actual streak
-          hoursStudied: Math.round((chats.length * 0.5 + exams.length * 0.75) * 10) / 10,
+          hoursStudied:
+            Math.round((chats.length * 0.5 + exams.length * 0.75) * 10) / 10,
           averageScore: avgScore,
         });
 
@@ -80,7 +90,7 @@ function Dashboard({ onNavigate }) {
         const activities = [];
 
         // Add recent chats
-        chats.slice(0, 3).forEach(chat => {
+        chats.slice(0, 3).forEach((chat) => {
           activities.push({
             id: `chat_${chat.id || chat.chat_id}`,
             type: "chat",
@@ -93,7 +103,7 @@ function Dashboard({ onNavigate }) {
         });
 
         // Add recent exams
-        exams.slice(0, 2).forEach(exam => {
+        exams.slice(0, 2).forEach((exam) => {
           activities.push({
             id: `exam_${exam.id || exam.exam_id}`,
             type: "exam",
@@ -107,11 +117,14 @@ function Dashboard({ onNavigate }) {
         });
 
         // Add recent notes
-        notes.slice(0, 2).forEach(note => {
+        notes.slice(0, 2).forEach((note) => {
           activities.push({
             id: `note_${note.id || note.note_id}`,
             type: "note",
-            title: note.content ? note.content.substring(0, 50) + (note.content.length > 50 ? '...' : '') : "Note",
+            title: note.content
+              ? note.content.substring(0, 50) +
+                (note.content.length > 50 ? "..." : "")
+              : "Note",
             time: formatTimeAgo(note.created_at),
             icon: DocumentTextIcon,
             color: "from-purple-500 to-purple-600",
@@ -122,7 +135,6 @@ function Dashboard({ onNavigate }) {
         // Sort by most recent and take top 5
         activities.sort((a, b) => b.timestamp - a.timestamp);
         setRecentActivity(activities.slice(0, 5));
-
       } catch (error) {
         console.error("Failed to load dashboard data:", error);
       } finally {
@@ -149,9 +161,11 @@ function Dashboard({ onNavigate }) {
       const diffDays = Math.floor(diffMs / 86400000);
 
       if (diffMins < 1) return "Just now";
-      if (diffMins < 60) return `${diffMins} minute${diffMins > 1 ? 's' : ''} ago`;
-      if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
-      if (diffDays < 7) return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
+      if (diffMins < 60)
+        return `${diffMins} minute${diffMins > 1 ? "s" : ""} ago`;
+      if (diffHours < 24)
+        return `${diffHours} hour${diffHours > 1 ? "s" : ""} ago`;
+      if (diffDays < 7) return `${diffDays} day${diffDays > 1 ? "s" : ""} ago`;
       return date.toLocaleDateString();
     } catch {
       return dateString;
@@ -379,7 +393,9 @@ function Dashboard({ onNavigate }) {
                             <span className="text-green-600">📅</span>
                           </div>
                           <div className="flex-1">
-                            <p className="text-xs text-gray-500">Member Since</p>
+                            <p className="text-xs text-gray-500">
+                              Member Since
+                            </p>
                             <p className="font-medium text-gray-800">
                               November 2025
                             </p>
@@ -433,14 +449,14 @@ function Dashboard({ onNavigate }) {
 
       {/* Account Settings Modal */}
       {showSettings && (
-        <div 
+        <div
           className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4"
           onClick={() => {
             setShowSettings(false);
             setEditMode(false);
           }}
         >
-          <div 
+          <div
             className="bg-white rounded-3xl max-w-2xl w-full shadow-2xl overflow-hidden max-h-[90vh] flex flex-col"
             onClick={(e) => e.stopPropagation()}
           >
@@ -645,135 +661,20 @@ function Dashboard({ onNavigate }) {
         </div>
       )}
 
-      {/* Mobile Sidebar Overlay */}
-      {sidebarOpen && (
-        <div
-          className="fixed inset-0 bg-black/50 z-40 lg:hidden"
-          onClick={() => setSidebarOpen(false)}
-        />
-      )}
-
       {/* Sidebar */}
-      <aside
-        className={`fixed top-0 left-0 h-full bg-white shadow-xl z-50 transform transition-all duration-300 lg:translate-x-0 ${
-          sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
-        } ${
-          sidebarOpen ? "w-64" : "lg:w-16"
-        }`}
-      >
-        <div className={sidebarOpen ? "p-6" : "p-2"}>
-          <div className={`mb-8 ${sidebarOpen ? 'flex items-center justify-between' : ''}`}>
-            <div className={`flex items-center ${sidebarOpen ? 'space-x-3' : 'justify-center'}`}>
-              <div className="w-10 h-10 flex-shrink-0 bg-gradient-to-br from-red-600 to-red-800 rounded-xl flex items-center justify-center">
-                <SparklesIcon className="w-6 h-6 text-white" />
-              </div>
-              {sidebarOpen && <span className="text-xl font-bold text-red-800">Cognify AI</span>}
-            </div>
-            {sidebarOpen && (
-              <button
-                onClick={() => setSidebarOpen(false)}
-                className="lg:hidden p-2 hover:bg-gray-100 rounded-lg flex-shrink-0"
-              >
-                <XMarkIcon className="w-5 h-5 text-gray-600" />
-              </button>
-            )}
-          </div>
-
-          <nav className="space-y-2">
-            <button
-              onClick={() => onNavigate && onNavigate("dashboard")}
-              className={`w-full flex items-center bg-red-50 text-red-600 rounded-xl font-medium ${
-                sidebarOpen ? "px-4 py-3 space-x-3" : "p-3 justify-center"
-              }`}
-              title="Dashboard"
-            >
-              <ChartBarIcon className="w-5 h-5 flex-shrink-0" />
-              {sidebarOpen && <span>Dashboard</span>}
-            </button>
-            <button
-              onClick={() => onNavigate && onNavigate("chat")}
-              className={`w-full flex items-center hover:bg-gray-100 text-gray-700 rounded-xl font-medium transition-colors ${
-                sidebarOpen ? "px-4 py-3 space-x-3" : "p-3 justify-center"
-              }`}
-              title="Chat"
-            >
-              <ChatBubbleLeftRightIcon className="w-5 h-5 flex-shrink-0" />
-              {sidebarOpen && <span>Chat</span>}
-            </button>
-            <button
-              onClick={() => onNavigate && onNavigate("notes")}
-              className={`w-full flex items-center hover:bg-gray-100 text-gray-700 rounded-xl font-medium transition-colors ${
-                sidebarOpen ? "px-4 py-3 space-x-3" : "p-3 justify-center"
-              }`}
-              title="Notes"
-            >
-              <DocumentTextIcon className="w-5 h-5 flex-shrink-0" />
-              {sidebarOpen && <span>Notes</span>}
-            </button>
-            <button
-              onClick={() => onNavigate && onNavigate("documents")}
-              className={`w-full flex items-center hover:bg-gray-100 text-gray-700 rounded-xl font-medium transition-colors ${
-                sidebarOpen ? "px-4 py-3 space-x-3" : "p-3 justify-center"
-              }`}
-              title="Documents"
-            >
-              <BookOpenIcon className="w-5 h-5 flex-shrink-0" />
-              {sidebarOpen && <span>Documents</span>}
-            </button>
-            <button
-              onClick={() => onNavigate && onNavigate("practicetest")}
-              className={`w-full flex items-center hover:bg-gray-100 text-gray-700 rounded-xl font-medium transition-colors ${
-                sidebarOpen ? "px-4 py-3 space-x-3" : "p-3 justify-center"
-              }`}
-              title="Practice Tests"
-            >
-              <AcademicCapIcon className="w-5 h-5 flex-shrink-0" />
-              {sidebarOpen && <span>Practice Tests</span>}
-            </button>
-            <button
-              onClick={() => onNavigate && onNavigate("performance")}
-              className={`w-full flex items-center hover:bg-gray-100 text-gray-700 rounded-xl font-medium transition-colors ${
-                sidebarOpen ? "px-4 py-3 space-x-3" : "p-3 justify-center"
-              }`}
-              title="Performance"
-            >
-              <TrophyIcon className="w-5 h-5 flex-shrink-0" />
-              {sidebarOpen && <span>Performance</span>}
-            </button>
-          </nav>
-
-          {/* Toggle Button */}
-          <div className={`absolute bottom-6 left-0 right-0 ${sidebarOpen ? "px-6" : "px-2"}`}>
-            <button
-              onClick={() => setSidebarOpen(!sidebarOpen)}
-              className={`hidden lg:flex w-full items-center hover:bg-gray-100 text-gray-700 rounded-xl font-medium transition-colors ${
-                sidebarOpen ? "px-4 py-3 space-x-3" : "p-3 justify-center"
-              }`}
-              title={sidebarOpen ? "Close sidebar" : "Open sidebar"}
-            >
-              <svg
-                className="w-5 h-5 flex-shrink-0"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d={sidebarOpen ? "M11 19l-7-7 7-7m8 14l-7-7 7-7" : "M13 5l7 7-7 7M5 5l7 7-7 7"}
-                />
-              </svg>
-              {sidebarOpen && <span>Close sidebar</span>}
-            </button>
-          </div>
-        </div>
-      </aside>
+      <Sidebar
+        sidebarOpen={sidebarOpen}
+        setSidebarOpen={setSidebarOpen}
+        onNavigate={onNavigate}
+        currentPage="dashboard"
+      />
 
       {/* Main Content */}
-      <main className={`transition-all duration-300 p-6 lg:p-8 ${
-        sidebarOpen ? "lg:ml-64" : "lg:ml-16"
-      }`}>
+      <main
+        className={`transition-all duration-300 p-6 lg:p-8 ${
+          sidebarOpen ? "lg:ml-64" : "lg:ml-16"
+        }`}
+      >
         <div className="max-w-7xl mx-auto">
           {/* Welcome Header */}
           <div className="mb-8">
@@ -890,7 +791,9 @@ function Dashboard({ onNavigate }) {
                       <ClockIcon className="w-8 h-8 text-gray-400" />
                     </div>
                     <p className="text-gray-600 mb-2">No recent activity yet</p>
-                    <p className="text-sm text-gray-500">Start a chat or take an exam to see your activity here</p>
+                    <p className="text-sm text-gray-500">
+                      Start a chat or take an exam to see your activity here
+                    </p>
                   </div>
                 ) : (
                   <div className="space-y-2">

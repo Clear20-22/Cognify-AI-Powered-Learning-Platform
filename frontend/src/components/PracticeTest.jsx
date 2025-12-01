@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { useAuth, useUserId } from "../hooks/useAuth.jsx";
 import { apiService } from "../services/apiService.js";
 import Avatar from "./Avatar";
+import Sidebar from "./Sidebar";
 import {
   SparklesIcon,
   AcademicCapIcon,
@@ -80,7 +81,7 @@ function PracticeTest({ onNavigate }) {
   // Helper function to get actual exam status - MUST be before useEffect
   const getActualStatus = (exam) => {
     const hasScore = exam.score !== undefined && exam.score !== null;
-    return exam.submitted || hasScore ? "completed" : (exam.status || "active");
+    return exam.submitted || hasScore ? "completed" : exam.status || "active";
   };
 
   useEffect(() => {
@@ -90,8 +91,8 @@ function PracticeTest({ onNavigate }) {
   // Check for examId in URL params and load exam results
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
-    const examId = urlParams.get('examId');
-    
+    const examId = urlParams.get("examId");
+
     if (examId && userId) {
       loadExamResults(examId);
     }
@@ -105,23 +106,26 @@ function PracticeTest({ onNavigate }) {
   // Close options menu when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
-      if (optionsMenuRef.current && !optionsMenuRef.current.contains(event.target)) {
+      if (
+        optionsMenuRef.current &&
+        !optionsMenuRef.current.contains(event.target)
+      ) {
         setShowOptionsMenu(false);
       }
     };
 
     if (showOptionsMenu) {
-      document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener("mousedown", handleClickOutside);
     }
 
     return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener("mousedown", handleClickOutside);
     };
   }, [showOptionsMenu]);
 
   const loadExams = async () => {
     if (!userId) return;
-    
+
     try {
       setLoading(true);
       const result = await apiService.getUserExams(userId);
@@ -161,9 +165,9 @@ function PracticeTest({ onNavigate }) {
         topic: selectedSubject,
         difficulty: selectedDifficulty,
         num_questions: numQuestions,
-        language: selectedLanguage
+        language: selectedLanguage,
       });
-      
+
       if (result) {
         alert("✅ Practice test created successfully!");
         setShowCreateModal(false);
@@ -194,7 +198,7 @@ function PracticeTest({ onNavigate }) {
       const examData = await apiService.getExam(exam.id || exam._id);
       console.log("Exam data received:", examData);
       console.log("Questions:", examData.questions);
-      
+
       // If exam is completed, show results view
       if (examData.submitted || exam.status === "completed") {
         setExamResults(examData);
@@ -213,20 +217,21 @@ function PracticeTest({ onNavigate }) {
   };
 
   const handleAnswerSelect = (questionIndex, answer) => {
-    setUserAnswers(prev => {
+    setUserAnswers((prev) => {
       const updated = {
         ...prev,
-        [questionIndex]: answer
+        [questionIndex]: answer,
       };
-      
+
       // Auto-save progress when user answers a question
       if (activeExam) {
         console.log("💾 Saving progress...", updated);
-        apiService.saveExamProgress(activeExam.id || activeExam._id, updated)
+        apiService
+          .saveExamProgress(activeExam.id || activeExam._id, updated)
           .then(() => console.log("✅ Progress saved successfully"))
-          .catch(err => console.error("❌ Failed to save progress:", err));
+          .catch((err) => console.error("❌ Failed to save progress:", err));
       }
-      
+
       return updated;
     });
   };
@@ -237,51 +242,59 @@ function PracticeTest({ onNavigate }) {
     // Check if all questions are answered
     const totalQuestions = activeExam.questions?.length || 0;
     const answeredCount = Object.keys(userAnswers).length;
-    
+
     if (answeredCount < totalQuestions) {
-      if (!window.confirm(`You have only answered ${answeredCount} out of ${totalQuestions} questions. Do you want to submit anyway?`)) {
+      if (
+        !window.confirm(
+          `You have only answered ${answeredCount} out of ${totalQuestions} questions. Do you want to submit anyway?`
+        )
+      ) {
         return;
       }
     }
 
     try {
       setSubmitting(true);
-      console.log('📤 Submitting exam:', activeExam.id || activeExam._id);
-      console.log('📝 User answers:', userAnswers);
-      
+      console.log("📤 Submitting exam:", activeExam.id || activeExam._id);
+      console.log("📝 User answers:", userAnswers);
+
       const result = await apiService.submitExam({
         exam_id: activeExam.id || activeExam._id,
-        answers: userAnswers
+        answers: userAnswers,
       });
-      
-      console.log('✅ Submit result:', result);
-      
+
+      console.log("✅ Submit result:", result);
+
       if (result.success) {
         setActiveExam(null);
         setUserAnswers({});
         // Show results immediately
-        const examData = await apiService.getExam(activeExam.id || activeExam._id);
+        const examData = await apiService.getExam(
+          activeExam.id || activeExam._id
+        );
         setExamResults(examData);
         setShowResults(true);
-        
+
         // Refresh exam list
         await loadExams();
-        
+
         // Check for achievements (wrapped in try-catch to not break the flow)
         try {
           const response = await apiService.getUserExams(userId);
           const allExams = response.exams || response || [];
-          const completedCount = allExams.filter(e => getActualStatus(e) === "completed").length;
-          
+          const completedCount = allExams.filter(
+            (e) => getActualStatus(e) === "completed"
+          ).length;
+
           console.log(`✅ Total completed exams: ${completedCount}`);
           console.log(`📊 Current exam score: ${examData.score}`);
-          
+
           // Check for high score achievement first (80% or higher)
           if (examData.score >= 80) {
             setAchievementData({
               title: "🌟 Well Done!",
               message: `Excellent performance! You scored ${examData.score}% on this exam. Keep up the great work!`,
-              icon: "🎯"
+              icon: "🎯",
             });
             setShowAchievementBadge(true);
           }
@@ -289,55 +302,65 @@ function PracticeTest({ onNavigate }) {
           else if (completedCount === 1) {
             setAchievementData({
               title: "🎉 First Exam Completed!",
-              message: "Congratulations! You've completed your first practice test. Keep going!",
-              icon: "🏆"
+              message:
+                "Congratulations! You've completed your first practice test. Keep going!",
+              icon: "🏆",
             });
             setShowAchievementBadge(true);
           } else if (completedCount === 5) {
             setAchievementData({
               title: "🌟 5 Exams Milestone!",
-              message: "Amazing! You've completed 5 practice tests. You're on fire!",
-              icon: "⭐"
+              message:
+                "Amazing! You've completed 5 practice tests. You're on fire!",
+              icon: "⭐",
             });
             setShowAchievementBadge(true);
           } else if (completedCount === 10) {
             setAchievementData({
               title: "💎 10 Exams Champion!",
-              message: "Incredible! You've completed 10 practice tests. You're a true champion!",
-              icon: "💎"
+              message:
+                "Incredible! You've completed 10 practice tests. You're a true champion!",
+              icon: "💎",
             });
             setShowAchievementBadge(true);
           } else if (completedCount === 20) {
             setAchievementData({
               title: "🔥 20 Exams Completed!",
-              message: "Unstoppable! You've completed 20 practice tests. Keep pushing!",
-              icon: "🔥"
+              message:
+                "Unstoppable! You've completed 20 practice tests. Keep pushing!",
+              icon: "🔥",
             });
             setShowAchievementBadge(true);
           } else if (completedCount === 30) {
             setAchievementData({
               title: "⚡ 30 Exams Master!",
-              message: "Phenomenal! You've completed 30 practice tests. You're a true master!",
-              icon: "⚡"
+              message:
+                "Phenomenal! You've completed 30 practice tests. You're a true master!",
+              icon: "⚡",
             });
             setShowAchievementBadge(true);
           } else if (completedCount === 50) {
             setAchievementData({
               title: "👑 50 Exams Legend!",
-              message: "Legendary! You've completed 50 practice tests. You're unstoppable!",
-              icon: "👑"
+              message:
+                "Legendary! You've completed 50 practice tests. You're unstoppable!",
+              icon: "👑",
             });
             setShowAchievementBadge(true);
           } else if (completedCount === 100) {
             setAchievementData({
               title: "🌟 100 Exams Elite!",
-              message: "Elite status achieved! You've completed 100 practice tests. You're in a class of your own!",
-              icon: "🌟"
+              message:
+                "Elite status achieved! You've completed 100 practice tests. You're in a class of your own!",
+              icon: "🌟",
             });
             setShowAchievementBadge(true);
           }
         } catch (achievementError) {
-          console.error("Achievement check error (non-critical):", achievementError);
+          console.error(
+            "Achievement check error (non-critical):",
+            achievementError
+          );
         }
       }
     } catch (error) {
@@ -350,7 +373,11 @@ function PracticeTest({ onNavigate }) {
 
   const handleCloseExam = () => {
     if (Object.keys(userAnswers).length > 0) {
-      if (!window.confirm("Your progress has been saved. You can continue this exam later from 'In Progress' filter. Do you want to exit?")) {
+      if (
+        !window.confirm(
+          "Your progress has been saved. You can continue this exam later from 'In Progress' filter. Do you want to exit?"
+        )
+      ) {
         return;
       }
     }
@@ -362,17 +389,21 @@ function PracticeTest({ onNavigate }) {
 
   const handleDeleteSelected = async () => {
     if (selectedExams.length === 0) return;
-    
-    if (!window.confirm(`Are you sure you want to delete ${selectedExams.length} test(s)? This action cannot be undone.`)) {
+
+    if (
+      !window.confirm(
+        `Are you sure you want to delete ${selectedExams.length} test(s)? This action cannot be undone.`
+      )
+    ) {
       return;
     }
-    
+
     try {
       // Delete each selected exam
       for (const examId of selectedExams) {
         await apiService.deleteExam(examId);
       }
-      
+
       alert(`✅ Successfully deleted ${selectedExams.length} test(s)!`);
       setSelectedExams([]);
       setSelectionMode(false);
@@ -384,9 +415,9 @@ function PracticeTest({ onNavigate }) {
   };
 
   const toggleExamSelection = (examId) => {
-    setSelectedExams(prev => 
-      prev.includes(examId) 
-        ? prev.filter(id => id !== examId)
+    setSelectedExams((prev) =>
+      prev.includes(examId)
+        ? prev.filter((id) => id !== examId)
         : [...prev, examId]
     );
   };
@@ -414,7 +445,8 @@ function PracticeTest({ onNavigate }) {
       return answerLetter || "Not answered";
     }
     try {
-      const answerIdx = answerLetter.toUpperCase().charCodeAt(0) - 'A'.charCodeAt(0);
+      const answerIdx =
+        answerLetter.toUpperCase().charCodeAt(0) - "A".charCodeAt(0);
       if (answerIdx >= 0 && answerIdx < options.length) {
         return options[answerIdx];
       }
@@ -427,10 +459,10 @@ function PracticeTest({ onNavigate }) {
   const formatDate = (dateString) => {
     try {
       const date = new Date(dateString);
-      return date.toLocaleDateString('en-US', { 
-        year: 'numeric', 
-        month: 'short', 
-        day: 'numeric' 
+      return date.toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
       });
     } catch {
       return dateString;
@@ -439,198 +471,93 @@ function PracticeTest({ onNavigate }) {
 
   const getStatusBadge = (status) => {
     const badges = {
-      completed: { bg: "bg-green-100", text: "text-green-700", label: "Completed" },
-      in_progress: { bg: "bg-blue-100", text: "text-blue-700", label: "In Progress" },
-      pending: { bg: "bg-yellow-100", text: "text-yellow-700", label: "Pending" },
+      completed: {
+        bg: "bg-green-100",
+        text: "text-green-700",
+        label: "Completed",
+      },
+      in_progress: {
+        bg: "bg-blue-100",
+        text: "text-blue-700",
+        label: "In Progress",
+      },
+      pending: {
+        bg: "bg-yellow-100",
+        text: "text-yellow-700",
+        label: "Pending",
+      },
     };
     const badge = badges[status] || badges.pending;
     return (
-      <span className={`px-3 py-1 ${badge.bg} ${badge.text} rounded-full text-xs font-semibold`}>
+      <span
+        className={`px-3 py-1 ${badge.bg} ${badge.text} rounded-full text-xs font-semibold`}
+      >
         {badge.label}
       </span>
     );
   };
 
   // Filter and sort exams based on search query and sort option
-  const filteredExams = exams.filter((exam) => {
-    const topic = (exam.topic || exam.title || "").toLowerCase();
-    const difficulty = (exam.difficulty || "").toLowerCase();
-    const query = searchQuery.toLowerCase();
-    
-    // Check search query
-    const matchesSearch = topic.includes(query) || difficulty.includes(query);
-    
-    // Check status filter
-    const actualStatus = getActualStatus(exam);
-    
-    let matchesStatus = true;
-    if (statusFilter !== "all") {
-      if (statusFilter === "completed") {
-        matchesStatus = actualStatus === "completed";
-      } else if (statusFilter === "unattempted") {
-        matchesStatus = actualStatus === "active";
-      } else if (statusFilter === "in_progress") {
-        matchesStatus = actualStatus === "in_progress";
+  const filteredExams = exams
+    .filter((exam) => {
+      const topic = (exam.topic || exam.title || "").toLowerCase();
+      const difficulty = (exam.difficulty || "").toLowerCase();
+      const query = searchQuery.toLowerCase();
+
+      // Check search query
+      const matchesSearch = topic.includes(query) || difficulty.includes(query);
+
+      // Check status filter
+      const actualStatus = getActualStatus(exam);
+
+      let matchesStatus = true;
+      if (statusFilter !== "all") {
+        if (statusFilter === "completed") {
+          matchesStatus = actualStatus === "completed";
+        } else if (statusFilter === "unattempted") {
+          matchesStatus = actualStatus === "active";
+        } else if (statusFilter === "in_progress") {
+          matchesStatus = actualStatus === "in_progress";
+        }
       }
-    }
-    
-    return matchesSearch && matchesStatus;
-  }).sort((a, b) => {
-    // Sort based on selected option
-    if (sortBy === "date") {
-      return new Date(b.created_at || b.date) - new Date(a.created_at || a.date);
-    } else if (sortBy === "score") {
-      const scoreA = a.score || 0;
-      const scoreB = b.score || 0;
-      return scoreB - scoreA;
-    } else if (sortBy === "name") {
-      const nameA = (a.topic || a.title || "").toLowerCase();
-      const nameB = (b.topic || b.title || "").toLowerCase();
-      return nameA.localeCompare(nameB);
-    }
-    return 0;
-  });
+
+      return matchesSearch && matchesStatus;
+    })
+    .sort((a, b) => {
+      // Sort based on selected option
+      if (sortBy === "date") {
+        return (
+          new Date(b.created_at || b.date) - new Date(a.created_at || a.date)
+        );
+      } else if (sortBy === "score") {
+        const scoreA = a.score || 0;
+        const scoreB = b.score || 0;
+        return scoreB - scoreA;
+      } else if (sortBy === "name") {
+        const nameA = (a.topic || a.title || "").toLowerCase();
+        const nameB = (b.topic || b.title || "").toLowerCase();
+        return nameA.localeCompare(nameB);
+      }
+      return 0;
+    });
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-red-50/30 flex">
-      {/* Mobile Sidebar Overlay */}
-      {sidebarOpen && (
-        <div
-          className="fixed inset-0 bg-black/50 z-40 lg:hidden"
-          onClick={() => setSidebarOpen(false)}
-        />
-      )}
-
-      {/* Collapsible Sidebar */}
-      <aside
-        className={`fixed top-0 left-0 h-full bg-gradient-to-b from-red-900 via-red-800 to-red-900 shadow-xl z-50 transform transition-all duration-300 lg:translate-x-0 ${
-          sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
-        } ${
-          sidebarOpen ? "w-64" : "lg:w-16"
-        }`}
-      >
-        <div className="p-4 h-full flex flex-col">
-          {/* Header */}
-          <div className="mb-6">
-            {sidebarOpen ? (
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-3">
-                  <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center">
-                    <SparklesIcon className="w-6 h-6 text-red-600" />
-                  </div>
-                  <span className="text-xl font-bold text-white">Cognify AI</span>
-                </div>
-                <button
-                  onClick={() => setSidebarOpen(false)}
-                  className="lg:hidden p-2 hover:bg-red-700 rounded-lg transition-colors"
-                >
-                  <XMarkIcon className="w-5 h-5 text-white" />
-                </button>
-              </div>
-            ) : (
-              <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center mx-auto">
-                <SparklesIcon className="w-6 h-6 text-red-600" />
-              </div>
-            )}
-          </div>
-
-          {/* Navigation */}
-          <nav className="flex-1 space-y-2">
-            <button
-              onClick={() => onNavigate && onNavigate("dashboard")}
-              className={`w-full flex items-center px-4 py-3 text-red-100 hover:bg-red-700 rounded-xl font-medium transition-colors ${
-                sidebarOpen ? "space-x-3" : "justify-center"
-              }`}
-              title="Dashboard"
-            >
-              <ChartBarIcon className="w-5 h-5 flex-shrink-0" />
-              {sidebarOpen && <span>Dashboard</span>}
-            </button>
-            <button
-              onClick={() => onNavigate && onNavigate("chat")}
-              className={`w-full flex items-center px-4 py-3 text-red-100 hover:bg-red-700 rounded-xl font-medium transition-colors ${
-                sidebarOpen ? "space-x-3" : "justify-center"
-              }`}
-              title="Chat"
-            >
-              <ChatBubbleLeftRightIcon className="w-5 h-5 flex-shrink-0" />
-              {sidebarOpen && <span>Chat</span>}
-            </button>
-            <button
-              onClick={() => onNavigate && onNavigate("notes")}
-              className={`w-full flex items-center px-4 py-3 text-red-100 hover:bg-red-700 rounded-xl font-medium transition-colors ${
-                sidebarOpen ? "space-x-3" : "justify-center"
-              }`}
-              title="Notes"
-            >
-              <DocumentTextIcon className="w-5 h-5 flex-shrink-0" />
-              {sidebarOpen && <span>Notes</span>}
-            </button>
-            <button
-              onClick={() => onNavigate && onNavigate("documents")}
-              className={`w-full flex items-center px-4 py-3 text-red-100 hover:bg-red-700 rounded-xl font-medium transition-colors ${
-                sidebarOpen ? "space-x-3" : "justify-center"
-              }`}
-              title="Documents"
-            >
-              <BookOpenIcon className="w-5 h-5 flex-shrink-0" />
-              {sidebarOpen && <span>Documents</span>}
-            </button>
-            <button
-              onClick={() => onNavigate && onNavigate("practicetest")}
-              className={`w-full flex items-center px-4 py-3 bg-red-700 text-white rounded-xl font-medium ${
-                sidebarOpen ? "space-x-3" : "justify-center"
-              }`}
-              title="Practice Tests"
-            >
-              <AcademicCapIcon className="w-5 h-5 flex-shrink-0" />
-              {sidebarOpen && <span>Practice Tests</span>}
-            </button>
-            <button
-              onClick={() => onNavigate && onNavigate("performance")}
-              className={`w-full flex items-center px-4 py-3 text-red-100 hover:bg-red-700 rounded-xl font-medium transition-colors ${
-                sidebarOpen ? "space-x-3" : "justify-center"
-              }`}
-              title="Performance"
-            >
-              <ChartBarIcon className="w-5 h-5 flex-shrink-0" />
-              {sidebarOpen && <span>Performance</span>}
-            </button>
-          </nav>
-
-          {/* Bottom Section */}
-          <div className="border-t border-red-700 pt-4">
-            {/* Toggle Sidebar */}
-            <button
-              onClick={() => setSidebarOpen(!sidebarOpen)}
-              className={`hidden lg:flex w-full items-center px-4 py-3 text-red-100 hover:bg-red-700 rounded-xl font-medium transition-colors ${
-                sidebarOpen ? "space-x-3" : "justify-center"
-              }`}
-              title={sidebarOpen ? "Close sidebar" : "Open sidebar"}
-            >
-              <svg
-                className="w-5 h-5 flex-shrink-0"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d={sidebarOpen ? "M11 19l-7-7 7-7m8 14l-7-7 7-7" : "M13 5l7 7-7 7M5 5l7 7-7 7"}
-                />
-              </svg>
-              {sidebarOpen && <span>Close sidebar</span>}
-            </button>
-          </div>
-        </div>
-      </aside>
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-red-50/30">
+      {/* Sidebar */}
+      <Sidebar
+        sidebarOpen={sidebarOpen}
+        setSidebarOpen={setSidebarOpen}
+        onNavigate={onNavigate}
+        currentPage="practicetest"
+        theme="white"
+      />
 
       {/* Main Content Area */}
-      <div className={`flex-1 transition-all duration-300 ${
-        sidebarOpen ? "lg:ml-64" : "lg:ml-16"
-      }`}>
+      <div
+        className={`transition-all duration-300 ${
+          sidebarOpen ? "lg:ml-64" : "lg:ml-16"
+        }`}
+      >
         {/* Top Navigation Bar */}
         <nav className="bg-white/80 backdrop-blur-md shadow-sm sticky top-0 z-30">
           <div className="px-6 py-4">
@@ -663,8 +590,12 @@ function PracticeTest({ onNavigate }) {
           <div className="bg-gradient-to-r from-red-600 to-red-700 rounded-2xl p-8 shadow-lg mb-8 text-white">
             <div className="flex items-center justify-between">
               <div>
-                <h2 className="text-3xl font-bold mb-2">Ready to Test Your Knowledge?</h2>
-                <p className="text-red-100">Create an AI-generated practice test tailored to your needs</p>
+                <h2 className="text-3xl font-bold mb-2">
+                  Ready to Test Your Knowledge?
+                </h2>
+                <p className="text-red-100">
+                  Create an AI-generated practice test tailored to your needs
+                </p>
               </div>
               <button
                 onClick={() => setShowCreateModal(true)}
@@ -753,7 +684,7 @@ function PracticeTest({ onNavigate }) {
                       In Progress
                     </button>
                   </div>
-                  
+
                   {/* Three-dot menu */}
                   <div className="relative" ref={optionsMenuRef}>
                     <button
@@ -762,7 +693,7 @@ function PracticeTest({ onNavigate }) {
                     >
                       <EllipsisVerticalIcon className="w-5 h-5 text-gray-600" />
                     </button>
-                    
+
                     {/* Dropdown menu */}
                     {showOptionsMenu && (
                       <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-10">
@@ -789,7 +720,7 @@ function PracticeTest({ onNavigate }) {
                               />
                             </svg>
                           </button>
-                          
+
                           {/* Sort submenu */}
                           {showSortSubmenu && (
                             <div className="bg-gray-50 border-l-2 border-red-500">
@@ -800,7 +731,9 @@ function PracticeTest({ onNavigate }) {
                                   setShowSortSubmenu(false);
                                 }}
                                 className={`w-full text-left px-6 py-2 text-sm hover:bg-gray-100 transition-colors ${
-                                  sortBy === "date" ? "text-red-600 font-medium" : "text-gray-700"
+                                  sortBy === "date"
+                                    ? "text-red-600 font-medium"
+                                    : "text-gray-700"
                                 }`}
                               >
                                 Date Created
@@ -812,7 +745,9 @@ function PracticeTest({ onNavigate }) {
                                   setShowSortSubmenu(false);
                                 }}
                                 className={`w-full text-left px-6 py-2 text-sm hover:bg-gray-100 transition-colors ${
-                                  sortBy === "score" ? "text-red-600 font-medium" : "text-gray-700"
+                                  sortBy === "score"
+                                    ? "text-red-600 font-medium"
+                                    : "text-gray-700"
                                 }`}
                               >
                                 Score (High to Low)
@@ -824,16 +759,18 @@ function PracticeTest({ onNavigate }) {
                                   setShowSortSubmenu(false);
                                 }}
                                 className={`w-full text-left px-6 py-2 text-sm hover:bg-gray-100 transition-colors ${
-                                  sortBy === "name" ? "text-red-600 font-medium" : "text-gray-700"
+                                  sortBy === "name"
+                                    ? "text-red-600 font-medium"
+                                    : "text-gray-700"
                                 }`}
                               >
                                 Name (A-Z)
                               </button>
                             </div>
                           )}
-                          
+
                           <div className="border-t border-gray-100 my-1"></div>
-                          
+
                           {/* View History option */}
                           <button
                             onClick={() => {
@@ -845,9 +782,9 @@ function PracticeTest({ onNavigate }) {
                           >
                             View History
                           </button>
-                          
+
                           <div className="border-t border-gray-100 my-1"></div>
-                          
+
                           {/* Select option */}
                           <button
                             onClick={() => {
@@ -858,7 +795,9 @@ function PracticeTest({ onNavigate }) {
                             }}
                             className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
                           >
-                            {selectionMode ? "Cancel Selection" : "Select Tests"}
+                            {selectionMode
+                              ? "Cancel Selection"
+                              : "Select Tests"}
                           </button>
                         </div>
                       </div>
@@ -903,7 +842,9 @@ function PracticeTest({ onNavigate }) {
             ) : exams.length === 0 ? (
               <div className="text-center py-12">
                 <AcademicCapIcon className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                <p className="text-gray-600 text-lg mb-2">No practice tests yet</p>
+                <p className="text-gray-600 text-lg mb-2">
+                  No practice tests yet
+                </p>
                 <p className="text-gray-500 text-sm mb-6">
                   Create your first practice test to get started
                 </p>
@@ -936,69 +877,84 @@ function PracticeTest({ onNavigate }) {
                 {filteredExams.map((exam) => {
                   // Determine actual status using the helper function
                   const actualStatus = getActualStatus(exam);
-                  const hasScore = exam.score !== undefined && exam.score !== null;
-                  
+                  const hasScore =
+                    exam.score !== undefined && exam.score !== null;
+
                   return (
-                  <div
-                    key={exam.id || exam.exam_id}
-                    className={`border rounded-xl p-6 hover:shadow-md transition-all ${
-                      selectionMode ? "cursor-default" : "cursor-pointer"
-                    } ${
-                      selectedExams.includes(exam.id || exam.exam_id)
-                        ? "border-red-500 bg-red-50"
-                        : "border-gray-200"
-                    }`}
-                    onMouseDown={() => handleLongPressStart(exam.id || exam.exam_id)}
-                    onMouseUp={handleLongPressEnd}
-                    onMouseLeave={handleLongPressEnd}
-                    onTouchStart={() => handleLongPressStart(exam.id || exam.exam_id)}
-                    onTouchEnd={handleLongPressEnd}
-                  >
-                    <div className="flex items-start justify-between mb-4">
-                      {selectionMode && (
-                        <input
-                          type="checkbox"
-                          checked={selectedExams.includes(exam.id || exam.exam_id)}
-                          onChange={() => toggleExamSelection(exam.id || exam.exam_id)}
-                          className="mr-3 mt-1 w-4 h-4 text-red-600 rounded focus:ring-red-500"
-                        />
+                    <div
+                      key={exam.id || exam.exam_id}
+                      className={`border rounded-xl p-6 hover:shadow-md transition-all ${
+                        selectionMode ? "cursor-default" : "cursor-pointer"
+                      } ${
+                        selectedExams.includes(exam.id || exam.exam_id)
+                          ? "border-red-500 bg-red-50"
+                          : "border-gray-200"
+                      }`}
+                      onMouseDown={() =>
+                        handleLongPressStart(exam.id || exam.exam_id)
+                      }
+                      onMouseUp={handleLongPressEnd}
+                      onMouseLeave={handleLongPressEnd}
+                      onTouchStart={() =>
+                        handleLongPressStart(exam.id || exam.exam_id)
+                      }
+                      onTouchEnd={handleLongPressEnd}
+                    >
+                      <div className="flex items-start justify-between mb-4">
+                        {selectionMode && (
+                          <input
+                            type="checkbox"
+                            checked={selectedExams.includes(
+                              exam.id || exam.exam_id
+                            )}
+                            onChange={() =>
+                              toggleExamSelection(exam.id || exam.exam_id)
+                            }
+                            className="mr-3 mt-1 w-4 h-4 text-red-600 rounded focus:ring-red-500"
+                          />
+                        )}
+                        <div className="flex-1">
+                          <h3 className="font-semibold text-gray-800 mb-2">
+                            {exam.topic || exam.title || "Practice Test"}
+                          </h3>
+                          <div className="flex items-center space-x-2 text-sm text-gray-500">
+                            <ClockIcon className="w-4 h-4" />
+                            <span>
+                              {formatDate(exam.created_at || exam.date)}
+                            </span>
+                          </div>
+                        </div>
+                        {getStatusBadge(actualStatus)}
+                      </div>
+
+                      {hasScore && (
+                        <div className="mb-4">
+                          <div className="flex items-center justify-between text-sm mb-1">
+                            <span className="text-gray-600">Score</span>
+                            <span className="font-semibold text-gray-800">
+                              {exam.score}%
+                            </span>
+                          </div>
+                          <div className="w-full bg-gray-200 rounded-full h-2">
+                            <div
+                              className="bg-gradient-to-r from-green-500 to-green-600 h-2 rounded-full"
+                              style={{ width: `${exam.score}%` }}
+                            ></div>
+                          </div>
+                        </div>
                       )}
-                      <div className="flex-1">
-                        <h3 className="font-semibold text-gray-800 mb-2">
-                          {exam.topic || exam.title || "Practice Test"}
-                        </h3>
-                        <div className="flex items-center space-x-2 text-sm text-gray-500">
-                          <ClockIcon className="w-4 h-4" />
-                          <span>{formatDate(exam.created_at || exam.date)}</span>
-                        </div>
-                      </div>
-                      {getStatusBadge(actualStatus)}
+
+                      {!selectionMode && (
+                        <button
+                          onClick={() => handleContinueTest(exam)}
+                          className="w-full px-4 py-2 bg-red-50 text-red-600 rounded-lg text-sm font-medium hover:bg-red-100 transition-colors"
+                        >
+                          {actualStatus === "completed"
+                            ? "Review Answers"
+                            : "Continue Test"}
+                        </button>
+                      )}
                     </div>
-
-                    {hasScore && (
-                      <div className="mb-4">
-                        <div className="flex items-center justify-between text-sm mb-1">
-                          <span className="text-gray-600">Score</span>
-                          <span className="font-semibold text-gray-800">{exam.score}%</span>
-                        </div>
-                        <div className="w-full bg-gray-200 rounded-full h-2">
-                          <div
-                            className="bg-gradient-to-r from-green-500 to-green-600 h-2 rounded-full"
-                            style={{ width: `${exam.score}%` }}
-                          ></div>
-                        </div>
-                      </div>
-                    )}
-
-                    {!selectionMode && (
-                      <button
-                        onClick={() => handleContinueTest(exam)}
-                        className="w-full px-4 py-2 bg-red-50 text-red-600 rounded-lg text-sm font-medium hover:bg-red-100 transition-colors"
-                      >
-                        {actualStatus === "completed" ? "Review Answers" : "Continue Test"}
-                      </button>
-                    )}
-                  </div>
                   );
                 })}
               </div>
@@ -1012,7 +968,9 @@ function PracticeTest({ onNavigate }) {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl p-8 max-w-2xl w-full shadow-2xl">
             <div className="flex items-center justify-between mb-6">
-              <h3 className="text-2xl font-bold text-gray-800">Create Practice Test</h3>
+              <h3 className="text-2xl font-bold text-gray-800">
+                Create Practice Test
+              </h3>
               <button
                 onClick={() => setShowCreateModal(false)}
                 className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
@@ -1124,9 +1082,12 @@ function PracticeTest({ onNavigate }) {
           <div className="bg-white rounded-2xl p-8 max-w-4xl w-full max-h-[90vh] overflow-y-auto shadow-2xl">
             <div className="flex items-center justify-between mb-6">
               <div>
-                <h3 className="text-2xl font-bold text-gray-800">{activeExam.topic}</h3>
+                <h3 className="text-2xl font-bold text-gray-800">
+                  {activeExam.topic}
+                </h3>
                 <p className="text-sm text-gray-500 mt-1">
-                  Question {currentQuestion + 1} of {activeExam.questions?.length || 0}
+                  Question {currentQuestion + 1} of{" "}
+                  {activeExam.questions?.length || 0}
                 </p>
               </div>
               <button
@@ -1142,7 +1103,13 @@ function PracticeTest({ onNavigate }) {
               <div className="w-full bg-gray-200 rounded-full h-2">
                 <div
                   className="bg-red-600 h-2 rounded-full transition-all duration-300"
-                  style={{ width: `${((currentQuestion + 1) / (activeExam.questions?.length || 1)) * 100}%` }}
+                  style={{
+                    width: `${
+                      ((currentQuestion + 1) /
+                        (activeExam.questions?.length || 1)) *
+                      100
+                    }%`,
+                  }}
                 ></div>
               </div>
             </div>
@@ -1160,8 +1127,9 @@ function PracticeTest({ onNavigate }) {
                     ) : (
                       <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
                         <p className="text-sm text-yellow-800">
-                          ⚠️ This exam was created with an older version. The question text is missing. 
-                          Please create a new test for the best experience.
+                          ⚠️ This exam was created with an older version. The
+                          question text is missing. Please create a new test for
+                          the best experience.
                         </p>
                         <p className="text-xs text-yellow-600 mt-2">
                           Choose the correct option from the choices below.
@@ -1169,41 +1137,54 @@ function PracticeTest({ onNavigate }) {
                       </div>
                     )}
                   </div>
-                  
+
                   {/* Options */}
                   <div className="space-y-3">
-                    {activeExam.questions[currentQuestion].options?.map((option, idx) => {
-                      const optionLetter = String.fromCharCode(65 + idx); // A, B, C, D
-                      const isSelected = userAnswers[currentQuestion] === optionLetter;
-                      
-                      return (
-                        <button
-                          key={idx}
-                          onClick={() => handleAnswerSelect(currentQuestion, optionLetter)}
-                          className={`w-full text-left p-4 rounded-xl border-2 transition-all ${
-                            isSelected
-                              ? "border-red-500 bg-red-50"
-                              : "border-gray-200 hover:border-gray-300 hover:bg-gray-50"
-                          }`}
-                        >
-                          <div className="flex items-start space-x-3">
-                            <span className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center font-semibold ${
-                              isSelected ? "bg-red-600 text-white" : "bg-gray-200 text-gray-700"
-                            }`}>
-                              {optionLetter}
-                            </span>
-                            <span className="flex-1 text-gray-800 pt-1">{option}</span>
-                          </div>
-                        </button>
-                      );
-                    })}
+                    {activeExam.questions[currentQuestion].options?.map(
+                      (option, idx) => {
+                        const optionLetter = String.fromCharCode(65 + idx); // A, B, C, D
+                        const isSelected =
+                          userAnswers[currentQuestion] === optionLetter;
+
+                        return (
+                          <button
+                            key={idx}
+                            onClick={() =>
+                              handleAnswerSelect(currentQuestion, optionLetter)
+                            }
+                            className={`w-full text-left p-4 rounded-xl border-2 transition-all ${
+                              isSelected
+                                ? "border-red-500 bg-red-50"
+                                : "border-gray-200 hover:border-gray-300 hover:bg-gray-50"
+                            }`}
+                          >
+                            <div className="flex items-start space-x-3">
+                              <span
+                                className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center font-semibold ${
+                                  isSelected
+                                    ? "bg-red-600 text-white"
+                                    : "bg-gray-200 text-gray-700"
+                                }`}
+                              >
+                                {optionLetter}
+                              </span>
+                              <span className="flex-1 text-gray-800 pt-1">
+                                {option}
+                              </span>
+                            </div>
+                          </button>
+                        );
+                      }
+                    )}
                   </div>
                 </div>
 
                 {/* Navigation Buttons */}
                 <div className="flex justify-between items-center">
                   <button
-                    onClick={() => setCurrentQuestion(Math.max(0, currentQuestion - 1))}
+                    onClick={() =>
+                      setCurrentQuestion(Math.max(0, currentQuestion - 1))
+                    }
                     disabled={currentQuestion === 0}
                     className="px-6 py-3 border border-gray-300 text-gray-700 rounded-xl font-medium hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
@@ -1211,7 +1192,8 @@ function PracticeTest({ onNavigate }) {
                   </button>
 
                   <div className="text-sm text-gray-600">
-                    {Object.keys(userAnswers).length} of {activeExam.questions?.length || 0} answered
+                    {Object.keys(userAnswers).length} of{" "}
+                    {activeExam.questions?.length || 0} answered
                   </div>
 
                   {currentQuestion < (activeExam.questions?.length || 0) - 1 ? (
@@ -1234,7 +1216,9 @@ function PracticeTest({ onNavigate }) {
 
                 {/* Question Navigator */}
                 <div className="border-t pt-6">
-                  <p className="text-sm font-semibold text-gray-700 mb-3">Question Navigator</p>
+                  <p className="text-sm font-semibold text-gray-700 mb-3">
+                    Question Navigator
+                  </p>
                   <div className="grid grid-cols-10 gap-2">
                     {activeExam.questions?.map((_, idx) => (
                       <button
@@ -1265,8 +1249,12 @@ function PracticeTest({ onNavigate }) {
           <div className="bg-white rounded-2xl p-8 max-w-4xl w-full max-h-[90vh] overflow-y-auto shadow-2xl">
             <div className="flex items-center justify-between mb-6">
               <div>
-                <h3 className="text-2xl font-bold text-gray-800">Exam Results: {examResults.topic}</h3>
-                <p className="text-sm text-gray-500 mt-1">{examResults.difficulty}</p>
+                <h3 className="text-2xl font-bold text-gray-800">
+                  Exam Results: {examResults.topic}
+                </h3>
+                <p className="text-sm text-gray-500 mt-1">
+                  {examResults.difficulty}
+                </p>
               </div>
               <button
                 onClick={() => {
@@ -1284,12 +1272,16 @@ function PracticeTest({ onNavigate }) {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-gray-600 mb-1">Your Score</p>
-                  <p className="text-4xl font-bold text-red-600">{examResults.score?.toFixed(1)}%</p>
+                  <p className="text-4xl font-bold text-red-600">
+                    {examResults.score?.toFixed(1)}%
+                  </p>
                 </div>
                 <div className="text-right">
                   <p className="text-sm text-gray-600 mb-1">Questions</p>
                   <p className="text-2xl font-semibold text-gray-800">
-                    {examResults.results?.filter(r => r.is_correct).length || 0}/{examResults.results?.length || 0}
+                    {examResults.results?.filter((r) => r.is_correct).length ||
+                      0}
+                    /{examResults.results?.length || 0}
                   </p>
                 </div>
               </div>
@@ -1303,78 +1295,102 @@ function PracticeTest({ onNavigate }) {
 
             {/* Questions and Answers */}
             <div className="space-y-6">
-              <h4 className="text-lg font-semibold text-gray-800">Detailed Review</h4>
+              <h4 className="text-lg font-semibold text-gray-800">
+                Detailed Review
+              </h4>
               {examResults.results?.map((result, idx) => {
                 // Get the question from the original exam data to access options
                 const question = examResults.questions?.[idx];
                 const options = result.options || question?.options || [];
-                
+
                 return (
-                <div key={idx} className="border border-gray-200 rounded-xl p-6">
-                  <div className="flex items-start justify-between mb-4">
-                    <h5 className="text-base font-semibold text-gray-800 flex-1">
-                      Question {idx + 1}
-                    </h5>
-                    {result.is_correct ? (
-                      <CheckCircleIcon className="w-6 h-6 text-green-600 flex-shrink-0" />
-                    ) : (
-                      <XCircleIcon className="w-6 h-6 text-red-600 flex-shrink-0" />
+                  <div
+                    key={idx}
+                    className="border border-gray-200 rounded-xl p-6"
+                  >
+                    <div className="flex items-start justify-between mb-4">
+                      <h5 className="text-base font-semibold text-gray-800 flex-1">
+                        Question {idx + 1}
+                      </h5>
+                      {result.is_correct ? (
+                        <CheckCircleIcon className="w-6 h-6 text-green-600 flex-shrink-0" />
+                      ) : (
+                        <XCircleIcon className="w-6 h-6 text-red-600 flex-shrink-0" />
+                      )}
+                    </div>
+
+                    <p className="text-gray-700 mb-4">{result.question}</p>
+
+                    {/* Show all options for reference */}
+                    {options.length > 0 && (
+                      <div className="mb-4 space-y-1">
+                        {options.map((option, optIdx) => (
+                          <div key={optIdx} className="text-sm text-gray-600">
+                            <span className="font-semibold">
+                              {String.fromCharCode(65 + optIdx)}:
+                            </span>{" "}
+                            {option}
+                          </div>
+                        ))}
+                      </div>
                     )}
-                  </div>
-                  
-                  <p className="text-gray-700 mb-4">{result.question}</p>
-                  
-                  {/* Show all options for reference */}
-                  {options.length > 0 && (
-                    <div className="mb-4 space-y-1">
-                      {options.map((option, optIdx) => (
-                        <div key={optIdx} className="text-sm text-gray-600">
-                          <span className="font-semibold">{String.fromCharCode(65 + optIdx)}:</span> {option}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                  
-                  <div className="space-y-2 mb-4">
-                    <div className={`p-3 rounded-lg ${
-                      result.your_answer === result.correct_answer
-                        ? "bg-green-50 border-2 border-green-500"
-                        : "bg-red-50 border-2 border-red-500"
-                    }`}>
-                      <p className="text-sm font-semibold mb-1">
-                        {result.is_correct ? "✓ Your Answer (Correct)" : "✗ Your Answer (Incorrect)"}
-                      </p>
-                      <p className="text-gray-800">
-                        {result.your_answer ? (
-                          <>
-                            <span className="font-semibold">{result.your_answer}:</span>{" "}
-                            {result.your_answer_text || getAnswerText(result.your_answer, options)}
-                          </>
-                        ) : (
-                          "Not answered"
-                        )}
-                      </p>
-                    </div>
-                    
-                    {!result.is_correct && (
-                      <div className="p-3 rounded-lg bg-green-50 border-2 border-green-500">
-                        <p className="text-sm font-semibold mb-1 text-green-700">✓ Correct Answer</p>
+
+                    <div className="space-y-2 mb-4">
+                      <div
+                        className={`p-3 rounded-lg ${
+                          result.your_answer === result.correct_answer
+                            ? "bg-green-50 border-2 border-green-500"
+                            : "bg-red-50 border-2 border-red-500"
+                        }`}
+                      >
+                        <p className="text-sm font-semibold mb-1">
+                          {result.is_correct
+                            ? "✓ Your Answer (Correct)"
+                            : "✗ Your Answer (Incorrect)"}
+                        </p>
                         <p className="text-gray-800">
-                          <span className="font-semibold">{result.correct_answer}:</span>{" "}
-                          {result.correct_answer_text || getAnswerText(result.correct_answer, options)}
+                          {result.your_answer ? (
+                            <>
+                              <span className="font-semibold">
+                                {result.your_answer}:
+                              </span>{" "}
+                              {result.your_answer_text ||
+                                getAnswerText(result.your_answer, options)}
+                            </>
+                          ) : (
+                            "Not answered"
+                          )}
+                        </p>
+                      </div>
+
+                      {!result.is_correct && (
+                        <div className="p-3 rounded-lg bg-green-50 border-2 border-green-500">
+                          <p className="text-sm font-semibold mb-1 text-green-700">
+                            ✓ Correct Answer
+                          </p>
+                          <p className="text-gray-800">
+                            <span className="font-semibold">
+                              {result.correct_answer}:
+                            </span>{" "}
+                            {result.correct_answer_text ||
+                              getAnswerText(result.correct_answer, options)}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+
+                    {result.explanation && (
+                      <div className="bg-blue-50 rounded-lg p-4">
+                        <p className="text-sm font-semibold text-blue-700 mb-2">
+                          💡 Explanation
+                        </p>
+                        <p className="text-gray-700 text-sm">
+                          {result.explanation}
                         </p>
                       </div>
                     )}
                   </div>
-                  
-                  {result.explanation && (
-                    <div className="bg-blue-50 rounded-lg p-4">
-                      <p className="text-sm font-semibold text-blue-700 mb-2">💡 Explanation</p>
-                      <p className="text-gray-700 text-sm">{result.explanation}</p>
-                    </div>
-                  )}
-                </div>
-              );
+                );
               })}
             </div>
 
@@ -1399,25 +1415,21 @@ function PracticeTest({ onNavigate }) {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 animate-fadeIn">
           <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8 text-center transform scale-100">
             {/* Achievement Icon */}
-            <div className="text-8xl mb-4">
-              {achievementData.icon}
-            </div>
-            
+            <div className="text-8xl mb-4">{achievementData.icon}</div>
+
             {/* Achievement Title */}
             <h2 className="text-3xl font-bold text-gray-800 mb-3">
               {achievementData.title}
             </h2>
-            
+
             {/* Achievement Message */}
             <p className="text-gray-600 text-lg mb-6">
               {achievementData.message}
             </p>
-            
+
             {/* Confetti Effect */}
-            <div className="mb-6 text-4xl">
-              🎊 🎉 🎊
-            </div>
-            
+            <div className="mb-6 text-4xl">🎊 🎉 🎊</div>
+
             {/* Close Button */}
             <button
               onClick={() => {
