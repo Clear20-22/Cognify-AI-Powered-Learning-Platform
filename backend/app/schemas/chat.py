@@ -1,10 +1,10 @@
 """
-Chat Schemas - Request/Response Models
+Chat Schemas - Request/Response Models (Pydantic V2)
 """
 
 from typing import Optional, List, Dict, Any
 from datetime import datetime
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 
 
 class ChatRequest(BaseModel):
@@ -15,8 +15,8 @@ class ChatRequest(BaseModel):
     context: Optional[str] = Field(None, description="Additional context")
     chat_id: Optional[str] = Field(None, description="Chat ID to continue existing conversation")
     
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "message": "Explain quantum entanglement in simple terms",
                 "user_id": "user_abc123",
@@ -24,6 +24,7 @@ class ChatRequest(BaseModel):
                 "chat_id": "chat_xyz789"
             }
         }
+    )
 
 
 class ChatResponse(BaseModel):
@@ -34,8 +35,8 @@ class ChatResponse(BaseModel):
     user_id: Optional[str] = None
     chat_id: Optional[str] = Field(None, description="Chat ID for this conversation")
     
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "response": "Quantum entanglement is a phenomenon where...",
                 "timestamp": "2024-01-15T10:30:05.123Z",
@@ -43,6 +44,7 @@ class ChatResponse(BaseModel):
                 "chat_id": "chat_xyz789"
             }
         }
+    )
 
 
 class ChatCreateRequest(BaseModel):
@@ -52,14 +54,15 @@ class ChatCreateRequest(BaseModel):
     topic: str = Field(..., description="Chat topic", min_length=1)
     difficulty: str = Field(default="intermediate", description="Difficulty level: beginner, intermediate, advanced")
     
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "user_id": "user_abc123",
                 "topic": "Machine Learning Basics",
                 "difficulty": "intermediate"
             }
         }
+    )
 
 
 class MessageResponse(BaseModel):
@@ -68,13 +71,14 @@ class MessageResponse(BaseModel):
     role: str = Field(..., description="Message role: 'user' or 'assistant'")
     content: str = Field(..., description="Message content")
     
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "role": "user",
                 "content": "What is supervised learning?"
             }
         }
+    )
 
 
 class ChatCreateResponse(BaseModel):
@@ -87,8 +91,8 @@ class ChatCreateResponse(BaseModel):
     messages: List[MessageResponse] = Field(..., description="Initial AI-generated messages")
     message: str = Field(..., description="Success message")
     
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "success": True,
                 "chat_id": "chat_xyz789",
@@ -107,6 +111,7 @@ class ChatCreateResponse(BaseModel):
                 "message": "Chat created successfully"
             }
         }
+    )
 
 
 class ChatDetailResponse(BaseModel):
@@ -119,8 +124,8 @@ class ChatDetailResponse(BaseModel):
     messages: List[MessageResponse] = Field(..., description="Chat message history")
     created_at: str = Field(..., description="Chat creation timestamp")
     
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "id": "chat_xyz789",
                 "user_id": "user_abc123",
@@ -135,3 +140,4 @@ class ChatDetailResponse(BaseModel):
                 "created_at": "2024-01-15T10:30:00"
             }
         }
+    )

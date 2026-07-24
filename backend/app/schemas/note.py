@@ -1,10 +1,10 @@
 """
-Note Schemas - Request/Response Models
+Note Schemas - Request/Response Models (Pydantic V2)
 """
 
 from typing import Optional, List
 from datetime import datetime
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 
 
 class NoteCreateRequest(BaseModel):
@@ -17,8 +17,8 @@ class NoteCreateRequest(BaseModel):
     pdf_name: Optional[str] = Field(None, description="Associated PDF document name")
     tags: Optional[List[str]] = Field(default_factory=list, description="Tags for organizing notes")
     
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "user_id": "user_abc123",
                 "content": "# Machine Learning Notes\n\nSupervised learning involves...",
@@ -28,6 +28,7 @@ class NoteCreateRequest(BaseModel):
                 "tags": ["machine-learning", "ai", "supervised-learning"]
             }
         }
+    )
 
 
 class NoteUpdateRequest(BaseModel):
@@ -38,8 +39,8 @@ class NoteUpdateRequest(BaseModel):
     tags: Optional[List[str]] = Field(None, description="Updated tags")
     is_favorite: Optional[bool] = Field(None, description="Updated favorite status")
     
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "content": "# Updated ML Notes\n\nAdditional information...",
                 "title": "ML Introduction (Updated)",
@@ -47,6 +48,7 @@ class NoteUpdateRequest(BaseModel):
                 "is_favorite": True
             }
         }
+    )
 
 
 class NoteResponse(BaseModel):
@@ -63,8 +65,8 @@ class NoteResponse(BaseModel):
     created_at: datetime = Field(..., description="Creation timestamp")
     updated_at: Optional[datetime] = Field(None, description="Last update timestamp")
     
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "id": "note_xyz123",
                 "user_id": "user_abc123",
@@ -78,6 +80,7 @@ class NoteResponse(BaseModel):
                 "updated_at": None
             }
         }
+    )
 
 
 class NoteListResponse(BaseModel):
@@ -87,8 +90,8 @@ class NoteListResponse(BaseModel):
     total: int = Field(..., description="Total number of notes")
     notes: List[NoteResponse] = Field(..., description="List of notes")
     
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "user_id": "user_abc123",
                 "total": 2,
@@ -105,3 +108,4 @@ class NoteListResponse(BaseModel):
                 ]
             }
         }
+    )

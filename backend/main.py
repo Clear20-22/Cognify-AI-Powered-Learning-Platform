@@ -128,14 +128,23 @@ app.add_middleware(
 
 
 @app.middleware("http")
-async def add_process_time_and_request_id(request, call_next):
+async def add_security_headers_and_process_time(request, call_next):
     import time, uuid
     request_id = str(uuid.uuid4())
     start_time = time.time()
     response = await call_next(request)
     process_time = time.time() - start_time
+    
+    # Timing and tracing headers
     response.headers["X-Process-Time"] = f"{process_time:.4f}s"
     response.headers["X-Request-ID"] = request_id
+    
+    # OWASP Recommended Security Response Headers
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["X-XSS-Protection"] = "1; mode=block"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
     return response
 
 # ============================================================================

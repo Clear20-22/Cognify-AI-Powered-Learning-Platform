@@ -1,10 +1,10 @@
 """
-User Domain Model
+User Domain Model (Pydantic V2)
 """
 
 from typing import Optional, List, Dict, Any
 from datetime import datetime
-from pydantic import BaseModel, Field, EmailStr
+from pydantic import BaseModel, Field, EmailStr, ConfigDict
 
 
 class User(BaseModel):
@@ -20,8 +20,8 @@ class User(BaseModel):
     preferences: Dict[str, Any] = Field(default_factory=dict, description="User preferences and settings")
     learning_stats: Dict[str, Any] = Field(default_factory=dict, description="Learning statistics and progress")
     
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "id": "user_abc123",
                 "email": "student@example.com",
@@ -40,3 +40,4 @@ class User(BaseModel):
                 }
             }
         }
+    )

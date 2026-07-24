@@ -19,3 +19,6 @@ def test_health_check_endpoint(test_client):
     assert "database" in data
     assert "X-Process-Time" in response.headers
     assert "X-Request-ID" in response.headers
+    assert response.headers["X-Content-Type-Options"] == "nosniff"
+    assert response.headers["X-Frame-Options"] == "DENY"
+    assert response.headers["X-XSS-Protection"] == "1; mode=block"

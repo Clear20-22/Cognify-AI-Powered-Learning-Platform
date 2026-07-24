@@ -1,10 +1,10 @@
 """
-Quiz Attempt Model
+Quiz Attempt Model (Pydantic V2)
 """
 
 from typing import List, Dict, Any
 from datetime import datetime
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 
 
 class QuizAttempt(BaseModel):
@@ -18,8 +18,8 @@ class QuizAttempt(BaseModel):
     score: Dict[str, Any] = Field(..., description="Score details: correct, total, percentage")
     created_at: datetime = Field(default_factory=datetime.now, description="Attempt timestamp")
     
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "id": "attempt_abc123",
                 "user_id": "user_xyz789",
@@ -41,3 +41,4 @@ class QuizAttempt(BaseModel):
                 "created_at": "2024-01-15T10:30:00"
             }
         }
+    )

@@ -1,8 +1,8 @@
 """
-Authentication Schemas - Request/Response Models
+Authentication Schemas - Request/Response Models (Pydantic V2)
 """
 
-from pydantic import BaseModel, Field, EmailStr
+from pydantic import BaseModel, Field, EmailStr, ConfigDict
 
 
 class SignUpRequest(BaseModel):
@@ -12,14 +12,15 @@ class SignUpRequest(BaseModel):
     password: str = Field(..., min_length=6, description="User password (min 6 characters)")
     fullName: str = Field(..., description="User full name")
     
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "email": "student@example.com",
                 "password": "securePassword123",
                 "fullName": "John Doe"
             }
         }
+    )
 
 
 class SignInRequest(BaseModel):
@@ -28,13 +29,14 @@ class SignInRequest(BaseModel):
     email: EmailStr = Field(..., description="User email")
     password: str = Field(..., description="User password")
     
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "email": "student@example.com",
                 "password": "securePassword123"
             }
         }
+    )
 
 
 class TokenResponse(BaseModel):
@@ -46,8 +48,8 @@ class TokenResponse(BaseModel):
     email: str = Field(..., description="User email")
     full_name: str = Field(..., description="User full name")
     
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
                 "token_type": "bearer",
@@ -56,3 +58,4 @@ class TokenResponse(BaseModel):
                 "full_name": "John Doe"
             }
         }
+    )

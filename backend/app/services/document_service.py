@@ -48,11 +48,13 @@ class DocumentService:
         Raises:
             HTTPException: If file validation fails
         """
-        # Validate file
+        # Validate file & sanitize filename against Path Traversal
         if not file.filename:
             raise HTTPException(status_code=400, detail="No filename provided")
         
-        file_ext = Path(file.filename).suffix.lower()
+        # Sanitize filename (strips path components like ../../)
+        safe_filename = Path(file.filename).name
+        file_ext = Path(safe_filename).suffix.lower()
         if file_ext not in self.ALLOWED_EXTENSIONS:
             raise HTTPException(
                 status_code=400, 
@@ -77,7 +79,7 @@ class DocumentService:
         
         # Upload file to GridFS
         gridfs_id = await self.fs.upload_from_stream(
-            filename=file.filename,
+            filename=safe_filename,
             source=file_content,
             metadata={
                 "doc_id": doc_id,
@@ -92,7 +94,7 @@ class DocumentService:
         document = Document(
             id=doc_id,
             user_id=user_id,
-            filename=file.filename,
+            filename=safe_filename,
             file_type=file_ext[1:],  # Remove the dot
             file_size=file_size,
             file_path=None,  # Not using filesystem anymore

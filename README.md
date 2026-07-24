@@ -208,9 +208,26 @@ Cognify incorporates **12 software design patterns** for enterprise maintainabil
 
 ---
 
-## 🧪 Verification Commands
+## 🔒 Security & OWASP Hardening
 
-To verify backend initialization:
+Cognify incorporates enterprise-grade security features out of the box:
+
+- **Password Hashing**: Bcrypt password hashing (`passlib[bcrypt]`).
+- **JWT Authorization**: OAuth2 Password bearer token handling (`python-jose`).
+- **Path Traversal Defense**: Strict filename sanitization (`Path(file.filename).name`) on file uploads.
+- **OWASP Security Response Headers**: Automatically sets `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `X-XSS-Protection: 1; mode=block`, and `Strict-Transport-Security`.
+- **Payload & Extension Limits**: Restricted upload file types (`.pdf`, `.pptx`) with max 50 MB limits.
+
+---
+
+## 🧪 Testing & Verification
+
+Run the automated Pytest test suite:
+```bash
+./.venv/bin/pytest backend/tests
+```
+
+To verify backend import integrity:
 ```bash
 ./.venv/bin/python -c "import sys; sys.path.insert(0, 'backend'); import main; print('✅ Backend main.py imported cleanly!')"
 ```

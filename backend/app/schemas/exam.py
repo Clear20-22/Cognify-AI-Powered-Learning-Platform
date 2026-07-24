@@ -1,9 +1,9 @@
 """
-Exam Schemas - Request/Response Models
+Exam Schemas - Request/Response Models (Pydantic V2)
 """
 
 from typing import Optional, List, Dict
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 
 
 class ExamCreateRequest(BaseModel):
@@ -15,8 +15,8 @@ class ExamCreateRequest(BaseModel):
     num_questions: int = Field(default=5, description="Number of questions", ge=1, le=20)
     language: str = Field(default="English", description="Language for questions")
     
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "user_id": "user_abc123",
                 "topic": "Data Structures",
@@ -25,6 +25,7 @@ class ExamCreateRequest(BaseModel):
                 "language": "English"
             }
         }
+    )
 
 
 class QuestionResponse(BaseModel):
@@ -34,14 +35,15 @@ class QuestionResponse(BaseModel):
     question: str = Field(..., description="Question text")
     options: List[str] = Field(..., description="Answer options")
     
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "index": 0,
                 "question": "What is the time complexity of binary search?",
                 "options": ["O(n)", "O(log n)", "O(n log n)", "O(1)"]
             }
         }
+    )
 
 
 class ExamCreateResponse(BaseModel):
@@ -55,8 +57,8 @@ class ExamCreateResponse(BaseModel):
     questions: List[QuestionResponse] = Field(..., description="Exam questions")
     message: str = Field(..., description="Success message")
     
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "success": True,
                 "exam_id": "exam_123abc",
@@ -73,6 +75,7 @@ class ExamCreateResponse(BaseModel):
                 "message": "Exam created successfully"
             }
         }
+    )
 
 
 class ExamSubmitRequest(BaseModel):
@@ -81,8 +84,8 @@ class ExamSubmitRequest(BaseModel):
     exam_id: str = Field(..., description="Exam ID")
     answers: Dict[int, str] = Field(..., description="Question index to answer mapping")
     
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "exam_id": "exam_123abc",
                 "answers": {
@@ -94,6 +97,7 @@ class ExamSubmitRequest(BaseModel):
                 }
             }
         }
+    )
 
 
 class QuestionResultResponse(BaseModel):
@@ -106,8 +110,8 @@ class QuestionResultResponse(BaseModel):
     is_correct: bool = Field(..., description="Whether the answer was correct")
     explanation: str = Field(..., description="Explanation for the correct answer")
     
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "question_index": 0,
                 "question": "What is the time complexity of binary search?",
@@ -117,6 +121,7 @@ class QuestionResultResponse(BaseModel):
                 "explanation": "Binary search divides the search space in half..."
             }
         }
+    )
 
 
 class ExamProgressRequest(BaseModel):
@@ -125,8 +130,8 @@ class ExamProgressRequest(BaseModel):
     exam_id: str = Field(..., description="Exam ID")
     answers: Dict[int, str] = Field(..., description="Current answers (question index to answer mapping)")
     
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "exam_id": "exam_123abc",
                 "answers": {
@@ -135,6 +140,7 @@ class ExamProgressRequest(BaseModel):
                 }
             }
         }
+    )
 
 
 class ExamSubmitResponse(BaseModel):
@@ -149,8 +155,8 @@ class ExamSubmitResponse(BaseModel):
     results: List[QuestionResultResponse] = Field(..., description="Detailed results for each question")
     message: str = Field(..., description="Result message")
     
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "success": True,
                 "exam_id": "exam_123abc",
@@ -171,3 +177,4 @@ class ExamSubmitResponse(BaseModel):
                 "message": "You scored 4/5 (80.0%)"
             }
         }
+    )

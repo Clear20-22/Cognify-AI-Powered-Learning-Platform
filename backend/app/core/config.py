@@ -3,7 +3,7 @@ Core Configuration Settings
 Centralized configuration using Pydantic Settings
 """
 
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing import List, Optional
 import os
 from functools import lru_cache
