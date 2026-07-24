@@ -1,3 +1,34 @@
+// DTO Adapters (Adapter Pattern) for API normalization
+export const adaptExamData = (rawExam) => {
+  if (!rawExam) return null;
+  return {
+    id: rawExam.id || rawExam._id || rawExam.exam_id,
+    topic: rawExam.topic || 'General Topic',
+    difficulty: rawExam.difficulty || 'intermediate',
+    numQuestions: rawExam.num_questions || (rawExam.questions ? rawExam.questions.length : 0),
+    questions: (rawExam.questions || []).map((q, idx) => ({
+      index: q.index !== undefined ? q.index : idx,
+      question: q.question || '',
+      options: q.options || [],
+      correct: q.correct || null
+    })),
+    score: rawExam.score || null,
+    submitted: !!rawExam.submitted,
+    createdAt: rawExam.created_at || new Date().toISOString()
+  };
+};
+
+export const adaptDocumentData = (rawDoc) => {
+  if (!rawDoc) return null;
+  return {
+    id: rawDoc.id || rawDoc._id,
+    filename: rawDoc.filename || rawDoc.name || 'Untitled Document',
+    fileType: rawDoc.file_type || rawDoc.type || 'pdf',
+    charCount: rawDoc.char_count || 0,
+    uploadedAt: rawDoc.uploaded_at || rawDoc.created_at || new Date().toISOString()
+  };
+};
+
 // Simple API service for backend communication
 class ApiService {
   constructor() {

@@ -1,14 +1,74 @@
 """
-Database Base Classes
+Database Base Classes & Interface Definitions
 Base repository pattern and data access layer
 """
 
+from abc import ABC, abstractmethod
 from typing import Optional, List, Dict, Any
 from datetime import datetime
 import logging
 from motor.motor_asyncio import AsyncIOMotorGridFSBucket
 
 logger = logging.getLogger(__name__)
+
+
+class IDataStore(ABC):
+    """Abstract Interface contract for all DataStores (MongoDB, In-Memory, etc.)."""
+
+    # User methods
+    @abstractmethod
+    async def add_user(self, user_id: str, user_data: Dict[str, Any]) -> Dict[str, Any]: ...
+
+    @abstractmethod
+    async def get_user(self, user_id: str) -> Optional[Dict[str, Any]]: ...
+
+    @abstractmethod
+    async def get_user_by_email(self, email: str) -> Optional[Dict[str, Any]]: ...
+
+    # Chat methods
+    @abstractmethod
+    async def add_chat(self, chat_id: str, chat_data: Dict[str, Any]) -> Dict[str, Any]: ...
+
+    @abstractmethod
+    async def get_chat(self, chat_id: str) -> Optional[Dict[str, Any]]: ...
+
+    @abstractmethod
+    async def get_user_chats(self, user_id: str) -> List[Dict[str, Any]]: ...
+
+    @abstractmethod
+    async def update_chat(self, chat_id: str, updates: Dict[str, Any]) -> Optional[Dict[str, Any]]: ...
+
+    # Exam methods
+    @abstractmethod
+    async def add_exam(self, exam_id: str, exam_data: Dict[str, Any]) -> Dict[str, Any]: ...
+
+    @abstractmethod
+    async def get_exam(self, exam_id: str) -> Optional[Dict[str, Any]]: ...
+
+    @abstractmethod
+    async def get_user_exams(self, user_id: str) -> List[Dict[str, Any]]: ...
+
+    @abstractmethod
+    async def update_exam(self, exam_id: str, updates: Dict[str, Any]) -> Optional[Dict[str, Any]]: ...
+
+    @abstractmethod
+    async def delete_exam(self, exam_id: str) -> bool: ...
+
+    # Note methods
+    @abstractmethod
+    async def add_note(self, note_id: str, note_data: Dict[str, Any]) -> Dict[str, Any]: ...
+
+    @abstractmethod
+    async def get_note(self, note_id: str) -> Optional[Dict[str, Any]]: ...
+
+    @abstractmethod
+    async def get_user_notes(self, user_id: str, limit: int = 100) -> List[Dict[str, Any]]: ...
+
+    @abstractmethod
+    async def update_note(self, note_id: str, updates: Dict[str, Any]) -> Optional[Dict[str, Any]]: ...
+
+    @abstractmethod
+    async def delete_note(self, note_id: str) -> bool: ...
 
 
 class BaseRepository:
@@ -18,22 +78,17 @@ class BaseRepository:
         self.db = db
     
     async def create(self, collection: str, document_id: str, data: Dict[str, Any]) -> Dict[str, Any]:
-        """Create a new document"""
         data["_id"] = document_id
         data["id"] = document_id
         data["created_at"] = datetime.now().isoformat()
-        
         await self.db[collection].insert_one(data)
         return data
     
     async def get_by_id(self, collection: str, document_id: str) -> Optional[Dict[str, Any]]:
-        """Get document by ID"""
         return await self.db[collection].find_one({"_id": document_id})
     
     async def update(self, collection: str, document_id: str, updates: Dict[str, Any]) -> Optional[Dict[str, Any]]:
-        """Update a document"""
         updates["updated_at"] = datetime.now().isoformat()
-        
         await self.db[collection].update_one(
             {"_id": document_id},
             {"$set": updates}
@@ -41,19 +96,17 @@ class BaseRepository:
         return await self.get_by_id(collection, document_id)
     
     async def delete(self, collection: str, document_id: str) -> bool:
-        """Delete a document"""
         result = await self.db[collection].delete_one({"_id": document_id})
         return result.deleted_count > 0
     
     async def list(self, collection: str, filters: Dict[str, Any] = None, limit: int = 100) -> List[Dict[str, Any]]:
-        """List documents with optional filters"""
         filters = filters or {}
         cursor = self.db[collection].find(filters).sort("created_at", -1).limit(limit)
         return await cursor.to_list(length=limit)
 
 
-class MongoDataStore(BaseRepository):
-    """MongoDB data store with specific collection methods"""
+class MongoDataStore(BaseRepository, IDataStore):
+    """MongoDB data store implementing IDataStore interface."""
     
     def __init__(self, db):
         super().__init__(db)
@@ -62,10 +115,8 @@ class MongoDataStore(BaseRepository):
         self.exams = db.exams
         self.notes = db.notes
         self.documents = db.documents
-        # GridFS for file storage
         self.fs = AsyncIOMotorGridFSBucket(db)
     
-    # User methods
     async def add_user(self, user_id: str, user_data: Dict) -> Dict:
         return await self.create("users", user_id, user_data)
     
@@ -75,7 +126,6 @@ class MongoDataStore(BaseRepository):
     async def get_user_by_email(self, email: str) -> Optional[Dict]:
         return await self.users.find_one({"email": email})
     
-    # Chat methods
     async def add_chat(self, chat_id: str, chat_data: Dict) -> Dict:
         return await self.create("chats", chat_id, chat_data)
     
@@ -88,7 +138,6 @@ class MongoDataStore(BaseRepository):
     async def update_chat(self, chat_id: str, updates: Dict) -> Optional[Dict]:
         return await self.update("chats", chat_id, updates)
     
-    # Exam methods
     async def add_exam(self, exam_id: str, exam_data: Dict) -> Dict:
         return await self.create("exams", exam_id, exam_data)
     
@@ -104,7 +153,6 @@ class MongoDataStore(BaseRepository):
     async def delete_exam(self, exam_id: str) -> bool:
         return await self.delete("exams", exam_id)
     
-    # Note methods
     async def add_note(self, note_id: str, note_data: Dict) -> Dict:
         return await self.create("notes", note_id, note_data)
     

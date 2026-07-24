@@ -126,6 +126,18 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
+@app.middleware("http")
+async def add_process_time_and_request_id(request, call_next):
+    import time, uuid
+    request_id = str(uuid.uuid4())
+    start_time = time.time()
+    response = await call_next(request)
+    process_time = time.time() - start_time
+    response.headers["X-Process-Time"] = f"{process_time:.4f}s"
+    response.headers["X-Request-ID"] = request_id
+    return response
+
 # ============================================================================
 # Include API Routers
 # ============================================================================

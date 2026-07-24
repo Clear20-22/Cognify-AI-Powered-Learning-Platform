@@ -1,0 +1,52 @@
+version: '3.8'
+
+services:
+  # --------------------------------------------------------------------------
+  # 1. FastAPI Backend Service
+  # --------------------------------------------------------------------------
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: cognify_backend
+    ports:
+      - "8000:8000"
+    environment:
+      - PORT=8000
+      - MONGODB_URL=mongodb://mongodb:27017
+      - DATABASE_NAME=cognify_db
+      - GROQ_API_KEY=${GROQ_API_KEY}
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - SECRET_KEY=${SECRET_KEY:-cognify-super-secret-jwt-key-2026}
+    depends_on:
+      - mongodb
+    restart: unless-stopped
+
+  # --------------------------------------------------------------------------
+  # 2. React Vite Frontend Service (Nginx)
+  # --------------------------------------------------------------------------
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    container_name: cognify_frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+  # --------------------------------------------------------------------------
+  # 3. MongoDB Database Service
+  # --------------------------------------------------------------------------
+  mongodb:
+    image: mongo:6.0
+    container_name: cognify_mongodb
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    restart: unless-stopped
+
+volumes:
+  mongo_data:

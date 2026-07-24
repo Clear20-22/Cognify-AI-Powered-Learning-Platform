@@ -1,139 +1,39 @@
 """
-AI Service - Handles AI/ML operations with Groq and Gemini
+AI Service - Handles AI/ML operations with Groq, Gemini, and Mock providers.
+Refactored with Strategy, Factory Method, Chain of Responsibility, and Resilience Decorator patterns.
 """
 
 import os
 import logging
 from typing import List, Dict, Any, Optional
+from app.services.ai_providers import AIProviderFactory, AIProviderChain
 
 logger = logging.getLogger(__name__)
 
 
 class AIService:
     """
-    AI Service supporting both Groq and Gemini for educational content generation.
-    Provides intelligent responses, content generation, and adaptive learning.
-    Groq is primary, Gemini is fallback.
+    Facade and Adapter for AI Provider operations.
+    Delegates to an AIProviderChain constructed by AIProviderFactory.
     """
-    
+
     def __init__(self):
+        self.chain: AIProviderChain = AIProviderFactory.create_chain()
         self.groq_key = os.getenv("GROQ_API_KEY")
         self.gemini_key = os.getenv("GEMINI_API_KEY")
-        self.groq_client = None
-        self.gemini_model = None
+        
+        # Expose properties for backward compatibility with main.py checks
+        primary = self.chain.primary_provider
+        self.active_provider = primary.name if primary.name != "mock" else None
+        self.groq_client = getattr(primary, "_client", None) if primary.name == "groq" else None
+        self.gemini_model = getattr(primary, "_model", None) if primary.name == "gemini" else None
         self.groq_model_name = "llama-3.3-70b-versatile"
         self.gemini_model_name = "gemini-2.0-flash-exp"
-        self.active_provider = None
-        self._initialize()
-    
-    def _initialize(self) -> None:
-        """Initialize AI clients (Groq primary, Gemini fallback)."""
-        # Try Groq first
-        if self.groq_key:
-            try:
-                from groq import Groq
-                self.groq_client = Groq(api_key=self.groq_key)
-                self.active_provider = "groq"
-                logger.info(f"✅ Groq AI initialized successfully (Model: {self.groq_model_name})")
-            except Exception as e:
-                logger.error(f"❌ Failed to initialize Groq AI: {e}")
-        
-        # Try Gemini as fallback
-        if self.gemini_key:
-            try:
-                import google.generativeai as genai
-                genai.configure(api_key=self.gemini_key)
-                self.gemini_model = genai.GenerativeModel(self.gemini_model_name)
-                if not self.active_provider:
-                    self.active_provider = "gemini"
-                logger.info(f"✅ Gemini AI initialized successfully (Model: {self.gemini_model_name})")
-            except Exception as e:
-                logger.error(f"❌ Failed to initialize Gemini AI: {e}")
-        
-        if not self.active_provider:
-            logger.warning("⚠️  No AI API keys found. Using demo mode.")
-            logger.warning("⚠️  Add GROQ_API_KEY or GEMINI_API_KEY to .env file")
-    
+
     def generate_response(self, prompt: str, context: Optional[str] = None) -> str:
-        """Generate AI response to a prompt."""
-        if not self.active_provider:
-            return self._demo_response(prompt)
-        
-        full_prompt = self._build_prompt(prompt, context)
-        
-        # Try Groq first
-        if self.groq_client:
-            try:
-                response = self.groq_client.chat.completions.create(
-                    model=self.groq_model_name,
-                    messages=[
-                        {"role": "system", "content": "You are an expert educational AI assistant for Cognify."},
-                        {"role": "user", "content": full_prompt}
-                    ],
-                    temperature=0.7,
-                    max_tokens=2000
-                )
-                return response.choices[0].message.content
-            except Exception as e:
-                logger.error(f"Groq AI error, trying Gemini fallback: {e}")
-        
-        # Fallback to Gemini
-        if self.gemini_model:
-            try:
-                response = self.gemini_model.generate_content(full_prompt)
-                return response.text
-            except Exception as e:
-                logger.error(f"Gemini AI error: {e}")
-                return f"I apologize, but I encountered an error: {str(e)}"
-        
-        return self._demo_response(prompt)
-    
-    def _build_prompt(self, prompt: str, context: Optional[str] = None) -> str:
-        """Build a comprehensive prompt for the AI."""
-        system_context = """You are an expert educational AI assistant for Cognify, a modern learning platform.
+        """Generate AI response through provider strategy chain."""
+        return self.chain.execute("generate_response", prompt, context)
 
-Your role:
-- Provide clear, accurate, and engaging educational content
-- Adapt explanations to the user's level
-- Use examples and analogies to clarify concepts
-- Encourage critical thinking
-- Be patient and supportive
-
-Always:
-- Break down complex topics into digestible parts
-- Use markdown formatting for better readability
-- Provide practical examples
-- Encourage questions and deeper exploration
-"""
-        
-        if context:
-            return f"{system_context}\n\nContext: {context}\n\nUser Question: {prompt}"
-        return f"{system_context}\n\nUser Question: {prompt}"
-    
-    def _demo_response(self, prompt: str) -> str:
-        """Provide demo response when AI is not available."""
-        return f"""🤖 **Demo Mode Response**
-
-You asked: *{prompt}*
-
-**Note:** This is a demo response. To enable real AI-powered responses:
-1. Get a Groq API key from: https://console.groq.com/keys
-   OR
-2. Get a Gemini API key from: https://makersuite.google.com/app/apikey
-3. Add to your `.env` file:
-   - `GROQ_API_KEY=your_key_here` (Primary)
-   - `GEMINI_API_KEY=your_key_here` (Fallback)
-4. Restart the backend server
-
-**Features available with real AI:**
-- Intelligent, context-aware responses
-- Personalized learning paths
-- Adaptive difficulty adjustment
-- Custom exam generation
-- Detailed explanations with examples
-
-Ready to unlock the full potential of Cognify! 🚀"""
-    
     def generate_chat_conversation(
         self,
         topic: str,
@@ -141,103 +41,55 @@ Ready to unlock the full potential of Cognify! 🚀"""
         num_exchanges: int = 3
     ) -> List[Dict[str, str]]:
         """Generate an educational chat conversation on a topic."""
-        if not self.active_provider:
-            return self._demo_conversation(topic, difficulty)
-        
         prompt = f"""Generate an educational conversation about {topic} at {difficulty} difficulty level.
 
 Create {num_exchanges} question-answer exchanges that:
 1. Start with fundamentals and build up complexity
 2. Include practical examples
 3. Encourage deeper understanding
-4. Are engaging and conversational
 
 Format each exchange as:
 Q: [Student question]
-A: [Expert answer]
+A: [Expert answer]"""
 
-Make it natural and educational."""
-        
-        # Try Groq first
-        if self.groq_client:
-            try:
-                response = self.groq_client.chat.completions.create(
-                    model=self.groq_model_name,
-                    messages=[
-                        {"role": "system", "content": "You are an expert educational AI assistant."},
-                        {"role": "user", "content": prompt}
-                    ],
-                    temperature=0.8,
-                    max_tokens=2000
-                )
-                return self._parse_conversation(response.choices[0].message.content)
-            except Exception as e:
-                logger.error(f"Groq conversation error, trying Gemini: {e}")
-        
-        # Fallback to Gemini
-        if self.gemini_model:
-            try:
-                response = self.gemini_model.generate_content(prompt)
-                return self._parse_conversation(response.text)
-            except Exception as e:
-                logger.error(f"Gemini conversation error: {e}")
-        
-        return self._demo_conversation(topic, difficulty)
-    
+        text_resp = self.generate_response(prompt)
+        return self._parse_conversation(text_resp)
+
     def _parse_conversation(self, text: str) -> List[Dict[str, str]]:
         """Parse AI-generated conversation into structured format."""
         messages = []
         lines = text.split('\n')
         current_q = None
         current_a = []
-        
+
         for line in lines:
             line = line.strip()
             if line.startswith('Q:'):
                 if current_q and current_a:
-                    messages.append({
-                        "role": "user",
-                        "content": current_q
-                    })
-                    messages.append({
-                        "role": "assistant",
-                        "content": ' '.join(current_a)
-                    })
+                    messages.append({"role": "user", "content": current_q})
+                    messages.append({"role": "assistant", "content": ' '.join(current_a)})
                     current_a = []
                 current_q = line[2:].strip()
             elif line.startswith('A:'):
                 current_a.append(line[2:].strip())
             elif current_q and line:
                 current_a.append(line)
-        
-        # Add last exchange
+
         if current_q and current_a:
             messages.append({"role": "user", "content": current_q})
             messages.append({"role": "assistant", "content": ' '.join(current_a)})
-        
+
         return messages if messages else self._demo_conversation("the topic", "intermediate")
-    
+
     def _demo_conversation(self, topic: str, difficulty: str) -> List[Dict[str, str]]:
-        """Generate demo conversation."""
+        """Generate demo conversation fallback."""
         return [
-            {
-                "role": "user",
-                "content": f"Can you explain {topic} to me?"
-            },
-            {
-                "role": "assistant",
-                "content": f"I'd be happy to explain {topic}! This is a demo conversation. Enable AI for detailed, personalized explanations."
-            },
-            {
-                "role": "user",
-                "content": f"What are the key concepts in {topic}?"
-            },
-            {
-                "role": "assistant",
-                "content": f"The key concepts would be explained here with real AI. Get your Groq API key to unlock full features!"
-            }
+            {"role": "user", "content": f"Can you explain {topic} to me?"},
+            {"role": "assistant", "content": f"I'd be happy to explain {topic}! Configure your Groq/Gemini API key for live AI answers."},
+            {"role": "user", "content": f"What are the key concepts in {topic}?"},
+            {"role": "assistant", "content": f"Key concepts of {topic} will be outlined here when live AI is connected."}
         ]
-    
+
     def generate_exam_questions(
         self,
         topic: str,
@@ -245,249 +97,88 @@ Make it natural and educational."""
         num_questions: int = 5,
         language: str = "English"
     ) -> List[Dict[str, Any]]:
-        """Generate exam questions on a topic."""
+        """Generate exam questions using provider chain."""
         logger.info(f"📝 Generating exam: topic='{topic}', difficulty='{difficulty}', questions={num_questions}, language='{language}'")
         
-        if not self.active_provider:
-            logger.warning(f"⚠️  No AI provider available. Using demo exam (English only)")
-            return self._demo_exam(topic, num_questions)
-        
-        # Create language-specific instruction
-        if language != "English":
-            language_instruction = f"\n\nIMPORTANT: You MUST write ALL content (questions, options, explanations) in {language} language. Do not use English."
-            system_message = f"You are an expert exam creator. You MUST create all content in {language} language only."
-        else:
-            language_instruction = ""
-            system_message = "You are an expert exam creator for educational purposes."
-        
+        language_instruction = f"\nWrite all content in {language} language." if language != "English" else ""
         prompt = f"""Create {num_questions} {difficulty} level exam questions about {topic}.{language_instruction}
 
-CRITICAL: You MUST use this EXACT format structure (but write the actual content in {language}):
+Question 1: [your question text]
+A) [option A]
+B) [option B]
+C) [option C]
+D) [option D]
+Correct: A
+Explanation: [explanation]
+"""
+        raw_text = self.generate_response(prompt)
+        parsed = self._parse_exam_questions(raw_text)
+        return parsed if parsed else self._demo_exam(topic, num_questions)
 
-Question 1: [your question text in {language}]
-A) [option in {language}]
-B) [option in {language}]
-C) [option in {language}]
-D) [option in {language}]
-Correct: [letter A, B, C, or D]
-Explanation: [explanation in {language}]
-
-Question 2: [your question text in {language}]
-A) [option in {language}]
-B) [option in {language}]
-C) [option in {language}]
-D) [option in {language}]
-Correct: [letter]
-Explanation: [explanation in {language}]
-
-Continue for all {num_questions} questions. Use EXACTLY this format with "Question X:", "A)", "B)", "C)", "D)", "Correct:", "Explanation:" labels in ENGLISH, but write the actual content in {language}."""
-        
-        # Try Groq first
-        if self.groq_client:
-            try:
-                logger.info(f"🤖 Using Groq AI to generate {language} questions...")
-                logger.debug(f"Groq prompt preview: {prompt[:200]}...")
-                response = self.groq_client.chat.completions.create(
-                    model=self.groq_model_name,
-                    messages=[
-                        {"role": "system", "content": system_message},
-                        {"role": "user", "content": prompt}
-                    ],
-                    temperature=0.7,
-                    max_tokens=2000
-                )
-                logger.info(f"✅ Groq API responded successfully")
-                raw_content = response.choices[0].message.content
-                logger.debug(f"Groq response preview: {raw_content[:200]}...")
-                result = self._parse_exam_questions(raw_content)
-                logger.info(f"✅ Groq successfully generated {len(result)} questions in {language}")
-                return result
-            except Exception as e:
-                logger.error(f"❌ Groq exam error: {type(e).__name__}: {str(e)}")
-                logger.exception("Full Groq error traceback:")
-                logger.info("Trying Gemini fallback...")
-        
-        # Fallback to Gemini
-        if self.gemini_model:
-            try:
-                logger.info(f"🤖 Using Gemini AI to generate {language} questions...")
-                response = self.gemini_model.generate_content(prompt)
-                result = self._parse_exam_questions(response.text)
-                logger.info(f"✅ Gemini successfully generated {len(result)} questions in {language}")
-                return result
-            except Exception as e:
-                logger.error(f"❌ Gemini exam error: {e}")
-        
-        logger.warning(f"⚠️  All AI providers failed. Using demo exam (English only)")
-        return self._demo_exam(topic, num_questions)
-    
     def _parse_exam_questions(self, text: str) -> List[Dict[str, Any]]:
-        """Parse AI-generated exam questions."""
-        logger.debug(f"Parsing AI response (length: {len(text)} chars)")
-        logger.debug(f"First 500 chars of response: {text[:500]}")
-        
+        """Parse raw AI output into structured exam questions."""
         questions = []
         current = {}
         question_lines = []
-        
+
         for line in text.split('\n'):
             line = line.strip()
             if not line:
                 continue
-            
-            # More flexible question detection (supports multiple languages)
-            # Matches: "Question 1:", "প্রশ্ন ১:", "सवाल 1:", etc.
+
             if any(marker in line.lower() for marker in ['question', 'প্রশ্ন', 'सवाल', 'pregunta', 'frage']) and (':' in line or '।' in line):
-                # Save previous question if exists
                 if current and current.get("question"):
                     questions.append(current)
-                
-                # Start new question - extract text after colon or Bengali danda
                 separator = ':' if ':' in line else '।'
-                question_text = line.split(separator, 1)[1].strip() if separator in line else ""
-                current = {"question": question_text, "options": [], "question_lines": []}
-                question_lines = [question_text] if question_text else []
-                
-            elif line.startswith(('A)', 'B)', 'C)', 'D)', 'a)', 'b)', 'c)', 'd)', 
-                                  'A.', 'B.', 'C.', 'D.', 'ক)', 'খ)', 'গ)', 'ঘ)')):
-                # If we were collecting question lines, join them
+                q_text = line.split(separator, 1)[1].strip() if separator in line else ""
+                current = {"question": q_text, "options": [], "question_lines": []}
+                question_lines = [q_text] if q_text else []
+            elif line.startswith(('A)', 'B)', 'C)', 'D)', 'a)', 'b)', 'c)', 'd)', 'A.', 'B.', 'C.', 'D.', 'ক)', 'খ)', 'গ)', 'ঘ)')):
                 if question_lines and current:
                     current["question"] = " ".join(question_lines).strip()
                     question_lines = []
-                # Extract option text (handle different formats)
-                option_text = line[2:].strip() if len(line) > 2 else line
-                current.get("options", []).append(option_text)
-                
+                current.get("options", []).append(line[2:].strip())
             elif any(marker in line.lower() for marker in ['correct', 'উত্তর', 'answer', 'সঠিক']):
-                # Extract the correct answer letter
-                answer_part = line.split(':', 1)[1].strip() if ':' in line else line.split('।', 1)[1].strip() if '।' in line else line
-                # Get first letter/character that looks like an answer
+                answer_part = line.split(':', 1)[1].strip() if ':' in line else line
                 for char in answer_part.upper():
-                    if char in 'ABCD' or char in 'কখগঘ':
-                        current["correct"] = char if char in 'ABCD' else {'ক': 'A', 'খ': 'B', 'গ': 'C', 'ঘ': 'D'}.get(char, 'A')
+                    if char in 'ABCD':
+                        current["correct"] = char
                         break
-                
             elif any(marker in line.lower() for marker in ['explanation', 'ব্যাখ্যা', 'व्याख्या']):
                 separator = ':' if ':' in line else '।'
                 current["explanation"] = line.split(separator, 1)[1].strip() if separator in line else ""
-                
             else:
-                # If we're building a question and haven't hit options yet
                 if current and not current.get("options"):
                     question_lines.append(line)
-        
-        # Don't forget the last question
+
         if current and current.get("question"):
             questions.append(current)
-        
-        # Validate questions have required fields
-        valid_questions = []
-        for q in questions:
-            if q.get("question") and q.get("options") and len(q["options"]) >= 4 and q.get("correct"):
-                valid_questions.append(q)
-        
-        logger.info(f"✅ Parsed {len(valid_questions)} valid questions from AI response")
-        if not valid_questions:
-            logger.warning(f"⚠️  No valid questions parsed! Raw questions found: {len(questions)}")
-            logger.warning(f"⚠️  First raw question: {questions[0] if questions else 'None'}")
-            logger.warning(f"⚠️  Falling back to demo exam")
-        
+
+        valid_questions = [
+            q for q in questions
+            if q.get("question") and q.get("options") and len(q["options"]) >= 4 and q.get("correct")
+        ]
         return valid_questions if valid_questions else self._demo_exam("the topic", 3)
-    
+
     def _demo_exam(self, topic: str, num_questions: int) -> List[Dict[str, Any]]:
-        """Generate demo exam questions."""
         return [
             {
                 "question": f"Sample question {i+1} about {topic}?",
-                "options": [
-                    "Option A (Demo)",
-                    "Option B (Demo)",
-                    "Option C (Demo)",
-                    "Option D (Demo)"
-                ],
+                "options": ["Option A (Demo)", "Option B (Demo)", "Option C (Demo)", "Option D (Demo)"],
                 "correct": "A",
                 "explanation": "This is a demo question. Enable AI for real adaptive exams!"
             }
             for i in range(min(num_questions, 3))
         ]
-    
+
     async def generate_study_notes(self, text: str) -> str:
-        """Generate structured study notes from text content."""
-        prompt = f"""Generate comprehensive study notes from the following content. 
-Structure the notes with:
-- Main topics and subtopics
-- Key concepts and definitions
-- Important points to remember
-- Examples where applicable
-
-Content:
-{text[:3000]}
-
-Format the notes in a clear, organized manner suitable for studying."""
-        
+        prompt = f"Generate comprehensive study notes for:\n\n{text[:3000]}"
         return self.generate_response(prompt)
-    
+
     async def generate_summary(self, text: str) -> str:
-        """Generate a concise summary of the text content."""
-        prompt = f"""Provide a clear and concise summary of the following content. 
-Highlight the main ideas and key takeaways.
+        return self.chain.execute("summarize_text", text)
 
-Content:
-{text[:3000]}
-
-Summary:"""
-        
-        return self.generate_response(prompt)
-    
     async def generate_quiz_from_text(self, text: str, num_questions: int = 5) -> List[Dict[str, Any]]:
-        """Generate quiz questions from document text."""
-        if not self.active_provider:
-            return self._demo_exam("the document", num_questions)
-        
-        prompt = f"""Based on the following content, create {num_questions} multiple-choice questions to test understanding.
-
-Content:
-{text[:4000]}
-
-For each question provide:
-1. Question text
-2. Four answer options (A, B, C, D)
-3. Correct answer
-4. Brief explanation
-
-Format exactly as:
-Question 1: [text]
-A) [option]
-B) [option]
-C) [option]
-D) [option]
-Correct: [letter]
-Explanation: [text]
-
-[Repeat for all questions]"""
-        
-        # Try Groq first
-        if self.groq_client:
-            try:
-                response = self.groq_client.chat.completions.create(
-                    model=self.groq_model_name,
-                    messages=[
-                        {"role": "system", "content": "You are an expert quiz creator. Generate clear, educational multiple-choice questions based on provided content."},
-                        {"role": "user", "content": prompt}
-                    ],
-                    temperature=0.7,
-                    max_tokens=2000
-                )
-                return self._parse_exam_questions(response.choices[0].message.content)
-            except Exception as e:
-                logger.error(f"Groq quiz error, trying Gemini: {e}")
-        
-        # Fallback to Gemini
-        if self.gemini_model:
-            try:
-                response = self.gemini_model.generate_content(prompt)
-                return self._parse_exam_questions(response.text)
-            except Exception as e:
-                logger.error(f"Gemini quiz error: {e}")
-        
-        return self._demo_exam("the document", num_questions)
+        prompt = f"Create {num_questions} exam questions from this document:\n\n{text[:3000]}"
+        raw_text = self.generate_response(prompt)
+        return self._parse_exam_questions(raw_text)

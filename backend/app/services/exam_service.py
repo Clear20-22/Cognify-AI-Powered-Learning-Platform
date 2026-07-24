@@ -12,7 +12,49 @@ from app.services.ai_service import AIService
 logger = logging.getLogger(__name__)
 
 
+class ExamBuilder:
+    """Builder Pattern for constructing Exam data models fluently."""
+
+    def __init__(self, user_id: str, topic: str):
+        self.exam_id = f"exam_{generate_uuid()}"
+        self.user_id = user_id
+        self.topic = topic
+        self.difficulty = "intermediate"
+        self.language = "English"
+        self.questions = []
+        self.status = "active"
+        self.submitted = False
+        self.score = None
+
+    def set_difficulty(self, difficulty: str) -> 'ExamBuilder':
+        self.difficulty = difficulty
+        return self
+
+    def set_language(self, language: str) -> 'ExamBuilder':
+        self.language = language
+        return self
+
+    def set_questions(self, questions: List[Dict[str, Any]]) -> 'ExamBuilder':
+        self.questions = questions
+        return self
+
+    def build(self) -> Dict[str, Any]:
+        return {
+            "id": self.exam_id,
+            "user_id": self.user_id,
+            "topic": self.topic,
+            "difficulty": self.difficulty,
+            "language": self.language,
+            "questions": self.questions,
+            "status": self.status,
+            "submitted": self.submitted,
+            "score": self.score,
+            "created_at": datetime.now().isoformat()
+        }
+
+
 class ExamService:
+
     """Service for handling exam operations."""
     
     def __init__(self, data_store: MongoDataStore, ai_service: AIService):
@@ -51,19 +93,15 @@ class ExamService:
                 language=language
             )
             
-            # Create exam in store
-            exam_id = f"exam_{generate_uuid()}"
-            exam_data = {
-                "user_id": user_id,
-                "topic": topic,
-                "difficulty": difficulty,
-                "questions": questions,
-                "status": "active",
-                "submitted": False,
-                "score": None,
-                "created_at": datetime.now().isoformat()
-            }
-            
+            # Create exam in store using ExamBuilder
+            exam_data = (
+                ExamBuilder(user_id=user_id, topic=topic)
+                .set_difficulty(difficulty)
+                .set_language(language)
+                .set_questions(questions)
+                .build()
+            )
+            exam_id = exam_data["id"]
             exam = await self.data_store.add_exam(exam_id, exam_data)
             
             # Remove correct answers and explanations from response
