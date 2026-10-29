@@ -16,8 +16,9 @@ class GeminiProvider(BaseAIProvider):
     """Google Gemini LLM Provider Strategy using gemini-2.0-flash-exp or gemini-1.5-flash."""
 
     def __init__(self, api_key: Optional[str] = None):
+        from app.core.config import get_settings
         self._api_key = api_key or os.getenv("GEMINI_API_KEY")
-        self._model_name = "gemini-2.0-flash-exp"
+        self._model_name = get_settings().AI_MODEL_GEMINI
         self._model = None
         self._initialize()
 

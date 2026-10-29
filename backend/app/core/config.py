@@ -47,8 +47,8 @@ class Settings(BaseSettings):
     # AI Service Settings
     GROQ_API_KEY: Optional[str] = None
     GEMINI_API_KEY: Optional[str] = None
-    AI_MODEL_GROQ: str = "llama-3.3-70b-versatile"
-    AI_MODEL_GEMINI: str = "gemini-2.0-flash-exp"
+    AI_MODEL_GROQ: str = "openai/gpt-oss-120b"
+    AI_MODEL_GEMINI: str = "gemini-3.8-flash"
     AI_MAX_TOKENS: int = 2048
     
     # Logging

@@ -15,8 +15,9 @@ class GroqProvider(BaseAIProvider):
     """Groq LLM Provider Strategy using Llama-3.3-70b-versatile."""
 
     def __init__(self, api_key: Optional[str] = None):
+        from app.core.config import get_settings
         self._api_key = api_key or os.getenv("GROQ_API_KEY")
-        self._model_name = "llama-3.3-70b-versatile"
+        self._model_name = get_settings().AI_MODEL_GROQ
         self._client = None
         self._initialize()
 
