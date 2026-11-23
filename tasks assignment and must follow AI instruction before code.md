@@ -1,0 +1,185 @@
+# 🧭 Cognify-AI — Task Assignment & Mandatory AI Instructions
+
+> **READ THIS FULLY BEFORE WRITING ANY CODE.**
+> This file assigns each team member a section of the new work and sets strict
+> boundaries. Work is divided by **continuity** (you extend the area you already
+> built) except for two brand-new isolated modules given to the members starting fresh.
+>
+> Feature IDs (FR-/NFR-) refer to the *Functional & Non-Functional Requirement Report*.
+> See also [TODO_FEATURES.md](TODO_FEATURES.md) and
+> [MISSING_FEATURES_FROM_PROPOSAL.md](MISSING_FEATURES_FROM_PROPOSAL.md) for full spec.
+
+---
+
+## ⛔ MANDATORY RULES FOR EVERY AI AGENT / DEVELOPER
+
+Whoever (or whichever AI agent) works on a task **MUST** obey all of the following.
+These are not suggestions.
+
+1. **Stay inside your own section.** Edit ONLY the files/folders listed under *your*
+   name in the "Ownership Boundaries" table. **Never** modify, refactor, rename, or
+   delete files owned by another member — even to "fix" something. If another section
+   has a bug, report it to that owner; do not touch it.
+2. **No cross-section edits.** If your feature needs data from another module, consume
+   it through the agreed **interface contract** (a REST endpoint, a dependency, or an
+   ID reference) — do NOT import internals or reach into their files.
+3. **Shared/integration files are append-only and need coordination.** The files in
+   the "Shared – coordinate first" list (routing, `router.py`, `apiService.js`,
+   `main.py`) may only be *added to* (register your own route/function). Do not change
+   or remove another member's lines there. Announce the change in the team chat first.
+4. **Read the spec before coding.** Open [TODO_FEATURES.md](TODO_FEATURES.md) and the
+   requirement report; implement exactly the FR/NFR listed for your task, nothing from
+   another member's list.
+5. **Follow the existing architecture & patterns** already in the repo (Strategy,
+   Factory, Repository/`IDataStore`, Builder, service-layer separation). Match the code
+   style, naming, and comment density of the surrounding code.
+6. **Secrets stay in `.env`.** Never hardcode API keys or secrets. Never commit `.env`.
+7. **Do not change already-fixed config** — the AI model names in
+   [config.py](backend/app/core/config.py) (`openai/gpt-oss-120b`, `gemini-3.8-flash`)
+   are correct; leave them alone.
+8. **Each new endpoint must enforce auth/role** via the RBAC dependency once it exists
+   (see AKRAM's contract). Validate all inputs; return proper 400/401/403.
+9. **Branch per person.** Work on your own git branch (`feature/<name>-<module>`), open
+   a PR; do not push directly to `main`.
+10. **Reference the FR/NFR ID** in your commit messages and PR description.
+
+> **One line:** *No one's AI agent works in anyone else's section. Integrate through
+> contracts, not by editing each other's files.*
+
+---
+
+## 🔗 Build order & dependency note
+
+Some modules depend on others. Build in this order; downstream owners code against the
+**contract** (not the files) while upstream is in progress:
+
+1. **AKRAM** ships the **Role/RBAC contract first** (a `require_role(...)` dependency and
+   `current_user.role`). Everyone else needs it to protect endpoints.
+2. **ARIK** ships the **Course contract** (`course_id` + `GET /courses/{id}`). Assignments
+   and teacher-quizzes reference `course_id` only.
+3. Everyone else builds in parallel against those two contracts.
+
+---
+
+# 👥 Task Assignments
+
+## 🟡 AKRAM — Identity, Access, Assignments & Account (largest share, you drive it)
+**Why you:** you already own Auth and Notes. You extend that into the full
+access-control + account + assignment backbone, which everything else depends on.
+
+**Your tasks**
+- [ ] Add `role` (Student / Teacher / Admin) to signup & user model — `FR-AUTH-01`
+- [ ] Password policy: min 8, upper + lower + digit — `FR-AUTH-03`
+- [ ] **RBAC dependency** `require_role(...)` + `current_user.role`; 403 on forbidden — `FR-AUTH-07`
+- [ ] Admin: list users, deactivate/reactivate — `FR-AUTH-09`
+- [ ] Profile update + change password — `FR-AUTH-10`; full logout — `FR-AUTH-08`
+- [ ] Login lockout after 5 fails / 10 min — `NFR-SEC-07`; reject `$`-operator injection — `NFR-SEC-04`
+- [ ] **Assignment module (NEW):** create / submit / deadline / grade / feedback — `FR-ASG-01..08`
+- [ ] Notes: course/topic tag + keyword search — `FR-NOTE-02/03`
+- [ ] **Teacher Dashboard (NEW, read-only aggregator):** consumes others' APIs — `FR-TDSH-01/03`
+- [ ] README fixes (model names, component tree) + resolve 20MB vs 50MB decision
+
+**You expose (contract for others):** `require_role()` dependency, `current_user.role`.
+Publish this first — Arik, Mim, Masum all need it.
+
+---
+
+## 🔵 SOJIB — AI & Document polish (your existing turf, focused)
+**Why you:** you own the AI subsystem and Documents. These are small hardening tasks
+inside code you already wrote.
+
+**Your tasks**
+- [ ] Visible "AI may be inaccurate — verify" disclaimer in chat — `FR-AI-07`
+- [ ] 30s AI timeout → clear error, keep input, allow retry — `FR-AI-09`
+- [ ] AI request rate-limit (default 30/hour/user) — `FR-AI-10`
+- [ ] Document "important topics" list (separate from summary) — `FR-DOC-05`
+- [ ] Ask-questions-about-a-document (doc-grounded Q&A) — `FR-DOC-07`
+- [ ] Mark upload **Failed** when no extractable text (scanned PDF) — `FR-DOC-03`
+
+**You expose:** document text/Q&A endpoints (already yours). No one else edits AI/Docs.
+
+---
+
+## 🟢 MIM — Quizzes & Analytics (your existing turf)
+**Why you:** you lead Exams/Practice and Analytics. You extend them into
+teacher-authored quizzes and deeper analytics.
+
+**Your tasks**
+- [ ] Teacher-authored quiz for a course (MCQ, 2–6 options, 1 correct) — `FR-QZ-01`
+- [ ] Topic tag + difficulty (Easy/Med/Hard) per question — `FR-QZ-02`
+- [ ] Publish with start/end time window — `FR-QZ-03`
+- [ ] **Countdown timer + auto-submit on expiry** — `FR-QZ-04`
+- [ ] Randomize question/option order — `FR-QZ-05`; max attempts (default 1) — `FR-QZ-07`
+- [ ] Topic-wise performance per attempt — `FR-QZ-09`
+- [ ] Topic-wise accuracy (% per topic) — `FR-ANL-03`
+- [ ] Weak areas = topics < 60% accuracy with ≥ 5 answers — `FR-ANL-04`
+
+**You consume:** `course_id` (from Arik) and `require_role()` (from Akram) — by contract only.
+
+---
+
+## 🟠 ARIK — Course Management (BRAND-NEW, fully isolated module)
+**Why you:** this is a self-contained module no one has started. You build it end-to-end
+in your own new files, so you never touch anyone else's code.
+
+**Your tasks**
+- [ ] Course model + CRUD: title, code, description — `FR-CRS-01`
+- [ ] Teacher edits/deletes own courses only (403 otherwise) — `FR-CRS-02`
+- [ ] Upload lecture materials (PDF/PPTX) to a course — `FR-CRS-03`
+- [ ] Student browses + enrolls — `FR-CRS-04`; access limited to enrolled — `FR-CRS-05`
+- [ ] Teacher views/removes enrolled students — `FR-CRS-06`
+- [ ] Search courses by title/code — `FR-CRS-07`; un-enroll (keep results) — `FR-CRS-08`
+
+**You expose (contract):** `course_id` (string) and `GET /courses/{id}`,
+`GET /courses/{id}/students`. Publish early — Assignments & teacher-quizzes need `course_id`.
+**You consume:** `require_role()` (from Akram).
+
+---
+
+## 🟣 MASUM — Real-Time Live Quiz / WebSockets (BRAND-NEW, fully isolated subsystem)
+**Why you:** the whole app is REST today; this is a separate WebSocket subsystem in its
+own new folder. Completely isolated — the ideal independent new addition.
+
+**Your tasks**
+- [ ] Teacher creates a live session + unique **6-char room code** — `FR-RT-01`
+- [ ] Students join by room code (invalid/closed → error) — `FR-RT-02`
+- [ ] Teacher advances questions, pushed < 1s to all joined clients — `FR-RT-03`
+- [ ] One answer per student per question — `FR-RT-04`
+- [ ] **Live leaderboard** updates < 1s — `FR-RT-05`
+- [ ] Reconnect with same room code, keep score — `FR-RT-06`
+- [ ] Real-time notifications (new quiz/assignment/marks) — `FR-RT-07`
+
+**You expose:** the `/ws/...` live endpoints (your own). Build the whole thing in a new
+`backend/app/realtime/` folder + new frontend Live components.
+**You consume:** `require_role()` (Akram); quiz question format (read-only reference).
+
+---
+
+# 🗂️ Ownership Boundaries (no one edits outside their own list)
+
+| Owner | Files / folders you OWN (edit only these) |
+|---|---|
+| **AKRAM** | `backend/app/api/v1/auth.py`, `users.py`, `notes.py` · `schemas/auth.py`, `user.py`, `note.py` · `core/security.py` · `api/deps.py` · `services/user_service.py`, `note_service.py` · **NEW** `api/v1/assignments.py`, `services/assignment_service.py`, `models/assignment.py`, `schemas/assignment.py` · `frontend/.../AuthModal.jsx`, `hooks/useAuth.jsx`, `Notes.jsx` · **NEW** `Assignments.jsx`, `TeacherDashboard.jsx` · `README.md` |
+| **SOJIB** | `backend/app/services/ai_providers/*`, `ai_service.py` · `api/v1/chat.py`, `documents.py` · `services/chat_service.py`, `document_service.py`, `document_extractors.py`, `pdf_service.py`, `pdfReader/*` · `frontend/.../ChatPage.jsx`, `Documents.jsx`, `hooks/useChatSession.js`, `useDocumentManager.js` |
+| **MIM** | `backend/app/api/v1/exams.py` · `services/exam_service.py` · `schemas/exam.py` · **NEW** `api/v1/quizzes.py` (teacher quizzes) · `frontend/.../PracticeTest.jsx`, `Performance.jsx`, `StudyPatterns.jsx`, `hooks/useExamSession.js` |
+| **ARIK** | **NEW only:** `backend/app/api/v1/courses.py`, `services/course_service.py`, `models/course.py`, `schemas/course.py` · `frontend/.../Courses.jsx`, `CourseDetail.jsx`, `hooks/useCourses.js` |
+| **MASUM** | **NEW only:** `backend/app/realtime/*` (new folder), `api/v1/live.py` · `frontend/.../LiveQuiz.jsx`, `LiveQuizHost.jsx`, `Leaderboard.jsx`, `hooks/useLiveQuiz.js` |
+
+### 🔓 Shared – coordinate first (append-only, never edit others' lines)
+`backend/app/api/v1/router.py` (register your own router) · `backend/main.py` ·
+`frontend/src/App.jsx` (add your own routes) · `frontend/src/services/apiService.js`
+(add your own API functions) · `backend/app/db/base.py` / `init_db.py` (add your own
+collection methods) · `backend/app/core/config.py` (add new settings only; don't change AI models).
+
+> Rule for shared files: **add a new block for your module; do not touch existing blocks.**
+> If two people must change the same shared file, agree in chat and merge carefully.
+
+---
+
+## ✅ Definition of Done (per task)
+- Endpoint enforces auth + correct role, validates input, returns proper status codes.
+- Matches existing architecture & style; no secrets hardcoded.
+- Only your owned files changed (plus append-only additions to shared files).
+- FR/NFR ID referenced in the PR; the corresponding box in
+  [TODO_FEATURES.md](TODO_FEATURES.md) is checked.
+- PR reviewed by at least one teammate before merge to `main`.

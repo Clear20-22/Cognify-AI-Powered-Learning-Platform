@@ -20,8 +20,13 @@
 
 Cognify transforms standard studying into an interactive, personalized learning journey:
 - **Intelligent AI Tutoring**: Engage in context-aware Q&A sessions backed by primary (`Groq`) and fallback (`Gemini`) LLM engines.
-- **Adaptive Practice Exams**: Generate multi-choice quizzes instantly on any topic, at any difficulty level, in multiple languages (English, Bengali, Hindi, Spanish, German).
+- **Persistent Chat Sessions & History**: Every tutoring conversation is saved, reloadable by session, and browsable from a unified History view alongside past exams.
+- **Adaptive Practice Exams**: Generate multi-choice quizzes instantly on any topic, at any difficulty level, currently in **English** and **Bangla** (more languages coming soon).
 - **Document Content Extractor**: Upload PDF notes or PPTX slide decks to extract text and generate instant study summaries and quizzes.
+- **Document-Based Quizzes with Scoring**: Take quizzes generated from your uploaded documents, submit answers, and get scored results that are saved for review.
+- **Performance Analytics**: Track quiz accuracy and learning progress with visual charts.
+- **Study Patterns & Streak Tracking**: Visualize daily activity, current and longest study streaks, most active day, and average activity per day to build consistent habits.
+- **Exam Progress Tracking**: Record and revisit exam progress and past attempts per user.
 - **Zero-Downtime Resilience**: Features automatic failover chains and offline in-memory demo modes, allowing the platform to run seamlessly even without external API keys or a local database server.
 
 ---
