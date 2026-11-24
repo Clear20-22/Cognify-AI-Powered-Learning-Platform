@@ -33,7 +33,10 @@ const languages = [
 
 ---
 
-## ⚠️ Issue 2 — Model names outdated in README (MEDIUM priority)
+## ✅ Issue 2 — Model names outdated in README (MEDIUM priority) — RESOLVED
+> Fixed in branch `fix/akram-readme-setup`: README now says the models come from
+> `AI_MODEL_GROQ` / `AI_MODEL_GEMINI` in `config.py`, so it can't go stale again.
+> The provider docstrings are in Sojib's files and still mention the old names.
 
 **README claim** ([README.md line 59 & 196](README.md#L59)):
 > "Groq **Llama-3.3-70b-versatile** LLM provider strategy"
@@ -58,7 +61,9 @@ AI_MODEL_GEMINI: str = "gemini-3.8-flash"
 
 ---
 
-## ⚠️ Issue 3 — Project structure doc incomplete (LOW priority)
+## ✅ Issue 3 — Project structure doc incomplete (LOW priority) — RESOLVED
+> Fixed in branch `fix/akram-readme-setup`: all five components added; `database.py`
+> moved to its real location (`backend/app/`) and `tests/` added.
 
 **README-র project structure section** ([README.md](README.md#L74))-এ এই ৫টা frontend component list করা হয়নি, যদিও এগুলো আসলে আছে:
 
