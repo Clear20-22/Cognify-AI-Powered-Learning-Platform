@@ -26,12 +26,13 @@
 - [ ] Search courses by title/code `FR-CRS-07`
 
 ### 3. Assignment Management (new module)
-- [ ] Teacher creates assignment (title, desc, deadline, max marks, files) `FR-ASG-01`
-- [ ] Student sees assignments w/ status Pending/Submitted/Graded `FR-ASG-02`
-- [ ] Student submits text/file (≤ 20 MB) `FR-ASG-03`
-- [ ] Teacher reviews submissions, assigns marks + feedback `FR-ASG-06`
-- [ ] Reject marks < 0 or > max `FR-ASG-07`
-- [ ] Show marks + feedback to student `FR-ASG-08`
+- [x] Teacher creates assignment (title, desc, deadline, max marks, files) `FR-ASG-01`
+- [x] Student sees assignments w/ status Pending/Submitted/Graded `FR-ASG-02` *(all students see all assignments until course enrollment exists)*
+- [x] Student submits text/file (≤ 20 MB) `FR-ASG-03`
+- [x] Late submissions refused unless allowed; resubmit replaces previous `FR-ASG-04`, `FR-ASG-05`
+- [x] Teacher reviews submissions, assigns marks + feedback `FR-ASG-06`
+- [x] Reject marks < 0 or > max `FR-ASG-07`
+- [x] Show marks + feedback to student `FR-ASG-08`
 
 ### 4. Teacher-authored Timed Quizzes
 - [ ] Teacher creates quiz for a course (MCQ, 2–6 options, 1 correct) `FR-QZ-01`

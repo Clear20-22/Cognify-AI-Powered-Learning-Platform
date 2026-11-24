@@ -548,6 +548,100 @@ class ApiService {
     });
   }
 
+  // Assignment API methods (FR-ASG-01..08)
+  // `body` is either a plain object (sent as JSON) or FormData (multipart, for files).
+  async assignmentRequest(path, { method = 'GET', body } = {}) {
+    const headers = this.authHeaders('Sign in to use assignments');
+    if (body instanceof FormData) {
+      delete headers['Content-Type']; // the browser sets the multipart boundary
+    }
+    const response = await fetch(`${this.baseURL}/api/assignments${path}`, {
+      method,
+      headers,
+      body: body instanceof FormData ? body : body && JSON.stringify(body)
+    });
+    if (response.status === 204) return null;
+    const data = await response.json().catch(() => null);
+    if (!response.ok) {
+      const detail = data && (typeof data.detail === 'string' ? data.detail : data.detail?.[0]?.msg);
+      throw new Error(detail || `HTTP error! status: ${response.status}`);
+    }
+    return data;
+  }
+
+  async listAssignments() {
+    return this.assignmentRequest('');
+  }
+
+  async createAssignment(fields, files = []) {
+    const form = new FormData();
+    Object.entries(fields).forEach(([key, value]) => {
+      if (value !== undefined && value !== null) form.append(key, value);
+    });
+    files.forEach((file) => form.append('files', file));
+    return this.assignmentRequest('', { method: 'POST', body: form });
+  }
+
+  async updateAssignment(assignmentId, updates) {
+    return this.assignmentRequest(`/${assignmentId}`, { method: 'PATCH', body: updates });
+  }
+
+  async deleteAssignment(assignmentId) {
+    return this.assignmentRequest(`/${assignmentId}`, { method: 'DELETE' });
+  }
+
+  async submitAssignment(assignmentId, text, file = null) {
+    const form = new FormData();
+    form.append('text', text || '');
+    if (file) form.append('file', file);
+    return this.assignmentRequest(`/${assignmentId}/submission`, { method: 'POST', body: form });
+  }
+
+  async getMySubmission(assignmentId) {
+    return this.assignmentRequest(`/${assignmentId}/submission`);
+  }
+
+  async listSubmissions(assignmentId) {
+    return this.assignmentRequest(`/${assignmentId}/submissions`);
+  }
+
+  async gradeSubmission(assignmentId, submissionId, marks, feedback) {
+    return this.assignmentRequest(`/${assignmentId}/submissions/${submissionId}/grade`, {
+      method: 'PATCH',
+      body: { marks, feedback }
+    });
+  }
+
+  // Files need the auth token, so they are fetched and saved instead of opened as links
+  async downloadAssignmentFile(path, filename) {
+    const headers = this.authHeaders('Sign in to download files');
+    delete headers['Content-Type'];
+    const response = await fetch(`${this.baseURL}/api/assignments${path}`, { headers });
+    if (!response.ok) {
+      const data = await response.json().catch(() => ({}));
+      throw new Error(typeof data.detail === 'string' ? data.detail : 'Download failed');
+    }
+    const url = URL.createObjectURL(await response.blob());
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+  }
+
+  async downloadAttachment(assignmentId, file) {
+    return this.downloadAssignmentFile(`/${assignmentId}/attachments/${file.file_id}`, file.filename);
+  }
+
+  async downloadSubmissionFile(assignmentId, submission) {
+    return this.downloadAssignmentFile(
+      `/${assignmentId}/submissions/${submission.id}/file`,
+      submission.file.filename
+    );
+  }
+
   // Document API methods
   async uploadDocument(userId, file) {
     try {

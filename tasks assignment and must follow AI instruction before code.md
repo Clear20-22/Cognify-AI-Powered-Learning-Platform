@@ -133,13 +133,31 @@ const { user, role, hasRole } = useAuth();   // role: "student" | "teacher" | "a
 
 ### 6. Shared files that changed — pull before editing them
 `backend/app/core/config.py` (new settings; unknown `.env` keys no longer crash startup) ·
-`backend/app/db/base.py` and `init_db.py` (new `update_user`, `list_users`) ·
+`backend/app/db/base.py` and `init_db.py` (new `update_user`, `list_users`; assignment,
+submission and **file storage** methods `store_file` / `get_file` / `delete_file`, which work
+on both MongoDB (GridFS) and the in-memory store — reuse them for any file upload) ·
 `backend/tests/conftest.py` (forces in-memory store).
 
 ### 7. Tests must never touch a real database
 `tests/conftest.py` sets `MONGODB_URI=""` so tests always use the in-memory store, even
 if your `.env` points to Atlas. Do not remove this — tests create and delete users and
 would pollute the shared database.
+
+### 8. Assignments contract (AKRAM's module, for ARIK and the Teacher Dashboard)
+- Every assignment has an optional `course_id` (string). Until enrollment exists, every
+  student sees every assignment.
+- **ARIK:** when enrollment is ready, expose a way to get a student's enrolled course IDs
+  (e.g. a data-store or service function `get_enrolled_course_ids(user_id) -> list[str]`)
+  and tell AKRAM. **AKRAM** then plugs it into `_student_visibility_filters()` in
+  `backend/app/services/assignment_service.py` — the single place that decides which
+  assignments a student sees. Do not edit that file yourself (rule 1).
+- `GET /api/assignments` for a teacher returns their assignments with `submission_count`,
+  `graded_count` and `awaiting_review` (the data for FR-TDSH-02).
+- For a student, each assignment carries `my_status` (`pending` / `submitted` / `graded`),
+  `my_marks` (only once graded) and `my_submitted_at`.
+- Upload rules (FR-ASG-03, NFR-SEC-05): PDF, DOCX, PPTX, ZIP, PNG, JPG, TXT; max 20 MB;
+  the file content must match its extension. `validate_upload()` in the same file can be
+  reused by other modules.
 
 ---
 
@@ -156,8 +174,8 @@ access-control + account + assignment backbone, which everything else depends on
 - [x] Admin: list users, deactivate/reactivate — `FR-AUTH-09` *(Admin page `/admin`)*
 - [x] Profile update + change password — `FR-AUTH-10`; full logout — `FR-AUTH-08` *(Profile page `/profile`)*
 - [x] Login lockout after 5 fails / 10 min — `NFR-SEC-07`; reject `$`-operator injection — `NFR-SEC-04` *(helper ready; apply it in your own schemas)*
-- [ ] **Assignment module (NEW):** create / submit / deadline / grade / feedback — `FR-ASG-01..08`
-- [ ] Notes: course/topic tag + keyword search — `FR-NOTE-02/03`
+- [x] **Assignment module (NEW):** create / submit / deadline / grade / feedback — `FR-ASG-01..08` *(page `/assignments`; see Integration Notes §8)*
+- [x] Notes: course/topic tag + keyword search — `FR-NOTE-02/03`
 - [ ] **Teacher Dashboard (NEW, read-only aggregator):** consumes others' APIs — `FR-TDSH-01/03`
 - [ ] README fixes (model names, component tree) + resolve 20MB vs 50MB decision
 
