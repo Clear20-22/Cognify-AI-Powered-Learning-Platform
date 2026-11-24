@@ -319,7 +319,7 @@ function Dashboard({ onNavigate }) {
                     <p className="text-sm font-semibold text-gray-800">
                       {user?.name || user?.email?.split("@")[0]}
                     </p>
-                    <p className="text-xs text-gray-500">Student</p>
+                    <p className="text-xs text-gray-500">{roleLabel}</p>
                   </div>
                 </button>
 
