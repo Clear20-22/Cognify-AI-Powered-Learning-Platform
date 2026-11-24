@@ -12,6 +12,7 @@ import PracticeTest from "./components/PracticeTest";
 import AuthModal from "./components/AuthModal";
 import ProfileSettings from "./components/ProfileSettings";
 import AdminUsers from "./components/AdminUsers";
+import Assignments from "./components/Assignments";
 import { AuthProvider, useAuth } from "./hooks/useAuth.jsx";
 import "./index.css";
 
@@ -180,6 +181,16 @@ function AppContent() {
           element={
             user ? (
               <AdminUsers onNavigate={handleNavigate} />
+            ) : (
+              <Navigate to="/" replace />
+            )
+          }
+        />
+        <Route
+          path="/assignments"
+          element={
+            user ? (
+              <Assignments onNavigate={handleNavigate} />
             ) : (
               <Navigate to="/" replace />
             )

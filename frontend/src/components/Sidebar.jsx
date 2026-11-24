@@ -10,7 +10,7 @@ import {
   ClockIcon,
   XMarkIcon,
 } from "@heroicons/react/24/outline";
-import { UserCircleIcon, ShieldCheckIcon } from "@heroicons/react/24/outline";
+import { UserCircleIcon, ShieldCheckIcon, ClipboardDocumentListIcon } from "@heroicons/react/24/outline";
 import { useAuth } from "../hooks/useAuth.jsx";
 
 function Sidebar({
@@ -33,6 +33,7 @@ function Sidebar({
   // Account pages, shown by role (FR-AUTH-07). Demo sessions have no account.
   const { hasRole, isDemo } = useAuth();
   if (!isDemo) {
+    navItems.push({ id: "assignments", icon: ClipboardDocumentListIcon, label: "Assignments" });
     navItems.push({ id: "profile", icon: UserCircleIcon, label: "Profile" });
   }
   if (hasRole("admin")) {

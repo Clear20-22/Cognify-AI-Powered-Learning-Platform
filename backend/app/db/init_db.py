@@ -16,7 +16,10 @@ class InMemoryDataStore(IDataStore):
         self.chats: Dict[str, Dict[str, Any]] = {}
         self.exams: Dict[str, Dict[str, Any]] = {}
         self.notes: Dict[str, Dict[str, Any]] = {}
-    
+        self.assignments: Dict[str, Dict[str, Any]] = {}
+        self.submissions: Dict[str, Dict[str, Any]] = {}
+        self.files: Dict[str, Dict[str, Any]] = {}
+
     # User methods
     async def add_user(self, user_id: str, user_data: Dict[str, Any]) -> Dict[str, Any]:
         user_data["id"] = user_id
@@ -133,3 +136,67 @@ class InMemoryDataStore(IDataStore):
             del self.notes[note_id]
             return True
         return False
+
+    # Assignment methods
+    @staticmethod
+    def _matches(item: Dict[str, Any], filters: Dict[str, Any]) -> bool:
+        return all(item.get(key) == value for key, value in filters.items())
+
+    async def add_assignment(self, assignment_id: str, data: Dict[str, Any]) -> Dict[str, Any]:
+        data["id"] = assignment_id
+        data["created_at"] = datetime.now().isoformat()
+        self.assignments[assignment_id] = data
+        return data
+
+    async def get_assignment(self, assignment_id: str) -> Optional[Dict[str, Any]]:
+        return self.assignments.get(assignment_id)
+
+    async def list_assignments(self, filters: Dict[str, Any], limit: int = 500) -> List[Dict[str, Any]]:
+        matching = [a for a in self.assignments.values() if self._matches(a, filters)]
+        return sorted(matching, key=lambda x: x.get("created_at", ""), reverse=True)[:limit]
+
+    async def update_assignment(self, assignment_id: str, updates: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        if assignment_id in self.assignments:
+            self.assignments[assignment_id].update(updates)
+            self.assignments[assignment_id]["updated_at"] = datetime.now().isoformat()
+            return self.assignments[assignment_id]
+        return None
+
+    async def delete_assignment(self, assignment_id: str) -> bool:
+        return self.assignments.pop(assignment_id, None) is not None
+
+    # Submission methods
+    async def save_submission(self, submission_id: str, data: Dict[str, Any]) -> Dict[str, Any]:
+        data["id"] = submission_id
+        self.submissions[submission_id] = data
+        return data
+
+    async def get_submission(self, submission_id: str) -> Optional[Dict[str, Any]]:
+        return self.submissions.get(submission_id)
+
+    async def list_submissions(self, filters: Dict[str, Any], limit: int = 1000) -> List[Dict[str, Any]]:
+        matching = [s for s in self.submissions.values() if self._matches(s, filters)]
+        return sorted(matching, key=lambda x: x.get("submitted_at", ""), reverse=True)[:limit]
+
+    async def update_submission(self, submission_id: str, updates: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        if submission_id in self.submissions:
+            self.submissions[submission_id].update(updates)
+            self.submissions[submission_id]["updated_at"] = datetime.now().isoformat()
+            return self.submissions[submission_id]
+        return None
+
+    async def delete_submissions(self, filters: Dict[str, Any]) -> int:
+        doomed = [sid for sid, s in self.submissions.items() if self._matches(s, filters)]
+        for sid in doomed:
+            del self.submissions[sid]
+        return len(doomed)
+
+    # File storage
+    async def store_file(self, file_id: str, filename: str, content_type: str, data: bytes) -> None:
+        self.files[file_id] = {"filename": filename, "content_type": content_type, "data": data}
+
+    async def get_file(self, file_id: str) -> Optional[Dict[str, Any]]:
+        return self.files.get(file_id)
+
+    async def delete_file(self, file_id: str) -> bool:
+        return self.files.pop(file_id, None) is not None
