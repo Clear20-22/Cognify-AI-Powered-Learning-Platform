@@ -39,8 +39,9 @@ These are not suggestions.
    are correct; leave them alone.
 8. **Each new endpoint must enforce auth/role** via the RBAC dependency once it exists
    (see AKRAM's contract). Validate all inputs; return proper 400/401/403.
-9. **Branch per person.** Work on your own git branch (`feature/<name>-<module>`), open
-   a PR; do not push directly to `main`.
+9. **One branch per feature, always from the latest `main`.** Name it
+   `feature/<name>-<feature>` (e.g. `feature/arik-course-crud`), open a PR, and never push
+   directly to `main`. Follow the **🔀 Git Workflow** section below step by step.
 10. **Reference the FR/NFR ID** in your commit messages and PR description.
 
 > **One line:** *No one's AI agent works in anyone else's section. Integrate through
@@ -176,6 +177,132 @@ collection methods) · `backend/app/core/config.py` (add new settings only; don'
 
 ---
 
+## 🔀 Git Workflow (step by step) — every task follows this
+
+> **For AI agents:** run these steps in order. Do not skip a step. If any step fails
+> (tests fail, conflict you cannot resolve safely, a file outside your section shows up),
+> **stop and report to your owner** instead of working around it.
+
+### 0. One-time setup
+```bash
+git clone https://github.com/Clear20-22/Cognify-AI-Powered-Learning-Platform.git
+git config user.name  "Your Real Name"
+git config user.email "your-github-email@example.com"
+```
+Commits must be made with **your own** name and email — this is how each member's
+contribution is counted. Never commit with another member's identity.
+
+### 1. Start a task — new branch from the latest `main`
+```bash
+git switch main
+git pull origin main
+git switch -c feature/<name>-<feature>     # e.g. feature/mim-quiz-timer
+```
+- One branch = one feature/task. Small branches are easy to review; a huge branch is not.
+- Other prefixes: `fix/<name>-<topic>` for bug fixes, `docs/<name>-<topic>` for docs only.
+- Never start a new task on top of an old, unmerged branch.
+
+### 2. While working — small, clear commits
+```bash
+git status                          # check exactly what changed
+git add <file1> <file2>             # stage your files by name
+git commit -m "feat(courses): add course CRUD endpoints (FR-CRS-01, FR-CRS-02)"
+```
+- Commit message: `type(scope): what changed (FR/NFR ID)`. Types: `feat`, `fix`, `docs`,
+  `test`, `refactor`.
+- **Do not use `git add .` blindly** — check `git status` first and stage only your files.
+- Never commit: `.env`, API keys, MongoDB connection strings, `node_modules/`, `dist/`,
+  `__pycache__/`, `.venv/`.
+
+### 3. Keep your branch up to date with `main`
+Whenever someone else's PR is merged (or at least before you open yours):
+```bash
+git fetch origin
+git merge origin/main               # brings the latest main into your branch
+```
+Then re-run the tests. If there is a conflict, see step 9.
+
+### 4. Before opening a PR — self-check
+```bash
+cd backend && python -m pytest tests        # all tests must pass
+cd ../frontend && npm run build             # build must succeed (if you touched frontend)
+git diff --stat origin/main...HEAD          # list every file your branch changes
+```
+- The file list must contain **only files from your section** (plus append-only additions
+  to shared files). Anything else → undo it before the PR.
+- No secrets in the diff: `git diff origin/main...HEAD | grep -iE "api_key=|mongodb\+srv|secret_key="`
+  must print nothing.
+- Add tests for new backend behaviour, and tick your boxes in [TODO_FEATURES.md](TODO_FEATURES.md).
+
+### 5. Push and open the PR
+```bash
+git push -u origin feature/<name>-<feature>
+gh pr create --base main --fill            # or open the link Git prints, on GitHub
+```
+Use this PR description template:
+```markdown
+## Summary
+What this PR does and which requirement IDs it implements (FR-xxx / NFR-xxx).
+
+## What changed
+Short bullet list, grouped by backend / frontend.
+
+## How it was tested
+Tests added/passed, manual checks done.
+
+## Notes for teammates
+New endpoints/contracts, .env changes, anything others must do after merge.
+
+## Not in this PR
+Related work that is still pending.
+```
+
+### 6. Review — at least one teammate
+The author asks a teammate in the group chat to review. **The reviewer checks:**
+- [ ] Only the author's own files changed (Ownership Boundaries), shared files append-only
+- [ ] No secrets, `.env`, `node_modules`, or build output committed
+- [ ] New endpoints use `require_role()` / `get_current_active_user` and validate input
+- [ ] Tests pass and new behaviour has tests
+- [ ] The PR description matches what the code actually does
+
+The reviewer approves on GitHub, or leaves comments. The author fixes the comments by
+pushing more commits to the **same branch** — the PR updates automatically.
+
+### 7. Merge
+- **Only after at least one approval.** Never merge your own PR without a review.
+- On GitHub use **"Create a merge commit"** so every commit and its author stays in the
+  history (this keeps each member's contribution visible).
+- After merging, click **"Delete branch"**.
+
+### 8. After the merge
+- The author posts in the group: what was merged and anything others must do
+  (e.g. reinstall requirements, new `.env` key).
+- Everyone updates:
+```bash
+git switch main
+git pull origin main
+git switch <your-open-branch>
+git merge main                      # keep your in-progress work up to date
+```
+
+### 9. Conflicts
+- Open the conflicted file, keep **both** sides when they are separate blocks (typical in
+  shared files like `router.py`, `App.jsx`, `apiService.js`).
+- **Never resolve a conflict by deleting another member's code.** If you are not sure what
+  their code needs, ask its owner before finishing the merge.
+- After resolving: `git add <file>`, `git commit`, re-run the tests.
+
+### 10. Never
+- Push or force-push to `main`.
+- Force-push (`--force`) to someone else's branch.
+- Merge your own PR without review.
+- Rewrite history that is already pushed and shared.
+- Commit a secret. **If a secret is ever committed:** tell the team immediately and
+  **revoke/regenerate the key** in its provider's console — deleting it in a later commit
+  is not enough, because it stays in the git history.
+
+---
+
 ## ✅ Definition of Done (per task)
 - Endpoint enforces auth + correct role, validates input, returns proper status codes.
 - Matches existing architecture & style; no secrets hardcoded.
@@ -183,3 +310,5 @@ collection methods) · `backend/app/core/config.py` (add new settings only; don'
 - FR/NFR ID referenced in the PR; the corresponding box in
   [TODO_FEATURES.md](TODO_FEATURES.md) is checked.
 - PR reviewed by at least one teammate before merge to `main`.
+- The 🔀 Git Workflow steps above were followed (branch from latest `main`, self-check,
+  PR template, merge commit, branch deleted).
