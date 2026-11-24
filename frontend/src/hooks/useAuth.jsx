@@ -173,6 +173,56 @@ export function AuthProvider({ children }) {
     return token ? { Authorization: `Bearer ${token}` } : {};
   };
 
+  // Update the signed-in user's own name (FR-AUTH-10)
+  const updateProfile = async (fullName) => {
+    try {
+      const response = await fetch(`${API_URL}/api/auth/me`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", ...getAuthHeader() },
+        body: JSON.stringify({ full_name: fullName }),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        return {
+          error: { message: getErrorMessage(data, "Could not update profile") },
+        };
+      }
+      const updatedUser = { ...user, name: data.full_name };
+      setUser(updatedUser);
+      localStorage.setItem("user", JSON.stringify(updatedUser));
+      return { error: null };
+    } catch (error) {
+      console.error("Error updating profile:", error);
+      return { error: { message: "Network error. Please try again." } };
+    }
+  };
+
+  // Change password after confirming the current one (FR-AUTH-10)
+  const changePassword = async (currentPassword, newPassword) => {
+    try {
+      const response = await fetch(`${API_URL}/api/auth/change-password`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...getAuthHeader() },
+        body: JSON.stringify({
+          current_password: currentPassword,
+          new_password: newPassword,
+        }),
+      });
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        return {
+          error: {
+            message: getErrorMessage(data, "Could not change password"),
+          },
+        };
+      }
+      return { error: null };
+    } catch (error) {
+      console.error("Error changing password:", error);
+      return { error: { message: "Network error. Please try again." } };
+    }
+  };
+
   // Sign in anonymously for demo mode
   const signInAnonymously = async () => {
     try {
@@ -200,17 +250,22 @@ export function AuthProvider({ children }) {
   // The backend enforces access; this only controls what the UI shows.
   const role = user?.role || "student";
   const hasRole = (...roles) => roles.includes(role);
+  // A demo session ("Get Started" without an account) has no account on the server
+  const isDemo = Boolean(user?.id?.startsWith("demo-"));
 
   const value = {
     user,
     loading,
     role,
     hasRole,
+    isDemo,
     signUp,
     signIn,
     signOut,
     signInAnonymously,
     getAuthHeader,
+    updateProfile,
+    changePassword,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

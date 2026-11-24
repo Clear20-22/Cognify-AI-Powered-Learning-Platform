@@ -10,6 +10,8 @@ import Performance from "./components/Performance";
 import StudyPatterns from "./components/StudyPatterns";
 import PracticeTest from "./components/PracticeTest";
 import AuthModal from "./components/AuthModal";
+import ProfileSettings from "./components/ProfileSettings";
+import AdminUsers from "./components/AdminUsers";
 import { AuthProvider, useAuth } from "./hooks/useAuth.jsx";
 import "./index.css";
 
@@ -157,6 +159,27 @@ function AppContent() {
           element={
             user ? (
               <PracticeTest onNavigate={handleNavigate} />
+            ) : (
+              <Navigate to="/" replace />
+            )
+          }
+        />
+        {/* Account pages (AKRAM): each page also redirects users without access */}
+        <Route
+          path="/profile"
+          element={
+            user ? (
+              <ProfileSettings onNavigate={handleNavigate} />
+            ) : (
+              <Navigate to="/" replace />
+            )
+          }
+        />
+        <Route
+          path="/admin"
+          element={
+            user ? (
+              <AdminUsers onNavigate={handleNavigate} />
             ) : (
               <Navigate to="/" replace />
             )
