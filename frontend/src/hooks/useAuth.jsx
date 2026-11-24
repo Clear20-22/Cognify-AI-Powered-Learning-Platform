@@ -17,13 +17,39 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // Refresh role, name, and join date from the server, so sessions saved
+    // before these fields existed (or before an admin changed the role) stay current
+    const refreshProfile = async (token, storedUser) => {
+      try {
+        const response = await fetch(`${API_URL}/api/auth/me`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!response.ok) return;
+        const data = await response.json();
+        const refreshed = {
+          ...storedUser,
+          name: data.full_name,
+          role: data.role,
+          createdAt: data.created_at,
+        };
+        setUser(refreshed);
+        localStorage.setItem("user", JSON.stringify(refreshed));
+      } catch (error) {
+        console.error("Error refreshing profile:", error);
+      }
+    };
+
     // Get initial session from localStorage
     const getInitialSession = () => {
       try {
         const storedUser = localStorage.getItem("user");
         const token = localStorage.getItem("access_token");
         if (storedUser && token) {
-          setUser(JSON.parse(storedUser));
+          const parsedUser = JSON.parse(storedUser);
+          setUser(parsedUser);
+          if (token !== "demo-token") {
+            refreshProfile(token, parsedUser);
+          }
         }
       } catch (error) {
         console.error("Error getting session:", error);
@@ -61,6 +87,7 @@ export function AuthProvider({ children }) {
         email: data.email,
         name: data.full_name,
         role: data.role,
+        createdAt: data.created_at,
       };
 
       // Don't store user and token - let them sign in manually
@@ -105,6 +132,7 @@ export function AuthProvider({ children }) {
         email: data.email,
         name: data.full_name,
         role: data.role,
+        createdAt: data.created_at,
       };
 
       // Store user and token

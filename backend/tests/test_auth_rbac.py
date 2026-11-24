@@ -49,6 +49,7 @@ def test_signup_defaults_to_student_and_token_carries_role(test_client):
     payload = decode_access_token(data["access_token"])
     assert payload["sub"] == data["user_id"]
     assert payload["role"] == "student"
+    assert data["created_at"]
 
 
 def test_signup_as_teacher(test_client):
@@ -123,6 +124,7 @@ def test_me_returns_profile_with_role(test_client):
     assert response.status_code == 200
     assert response.json()["role"] == "teacher"
     assert response.json()["email"] == "me@test.com"
+    assert response.json()["created_at"]
 
 
 def test_update_profile_name(test_client):

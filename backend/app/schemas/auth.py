@@ -73,6 +73,7 @@ class TokenResponse(BaseModel):
     email: str = Field(..., description="User email")
     full_name: str = Field(..., description="User full name")
     role: UserRole = Field(default=UserRole.STUDENT, description="User role")
+    created_at: Optional[str] = Field(None, description="Account creation timestamp (ISO 8601)")
 
     model_config = ConfigDict(
         json_schema_extra={
@@ -82,7 +83,8 @@ class TokenResponse(BaseModel):
                 "user_id": "user_abc123",
                 "email": "student@example.com",
                 "full_name": "John Doe",
-                "role": "student"
+                "role": "student",
+                "created_at": "2026-11-24T09:52:54"
             }
         }
     )
@@ -96,6 +98,7 @@ class CurrentUserResponse(BaseModel):
     full_name: str = Field(..., description="User full name")
     role: UserRole = Field(..., description="User role")
     is_active: bool = Field(..., description="Account active status")
+    created_at: Optional[str] = Field(None, description="Account creation timestamp (ISO 8601)")
 
 
 class ProfileUpdateRequest(BaseModel):

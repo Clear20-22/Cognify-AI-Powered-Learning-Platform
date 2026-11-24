@@ -2,6 +2,8 @@
 Authentication Routes - Sign up, sign in, and own-account endpoints
 """
 
+from datetime import datetime
+from typing import Any, Optional
 from fastapi import APIRouter, HTTPException, status, Depends
 import logging
 from app.schemas.auth import (
@@ -19,6 +21,13 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/auth")
 
 
+def _iso(value: Any) -> Optional[str]:
+    """Return a stored timestamp as an ISO string (older documents may hold datetimes)."""
+    if isinstance(value, datetime):
+        return value.isoformat()
+    return str(value) if value else None
+
+
 def _token_response(result: dict) -> TokenResponse:
     """Build the token response from a user service result."""
     user = result["user"]
@@ -28,7 +37,8 @@ def _token_response(result: dict) -> TokenResponse:
         user_id=user["id"],
         email=user["email"],
         full_name=user.get("full_name", user.get("name", "")),
-        role=user["role"]
+        role=user["role"],
+        created_at=_iso(user.get("created_at"))
     )
 
 
@@ -39,7 +49,8 @@ def _current_user_response(user: dict) -> CurrentUserResponse:
         email=user["email"],
         full_name=user.get("full_name", user.get("name", "")),
         role=user["role"],
-        is_active=user.get("is_active", True)
+        is_active=user.get("is_active", True),
+        created_at=_iso(user.get("created_at"))
     )
 
 
