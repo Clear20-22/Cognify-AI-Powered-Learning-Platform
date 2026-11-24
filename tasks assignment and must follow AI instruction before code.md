@@ -153,8 +153,8 @@ access-control + account + assignment backbone, which everything else depends on
 - [x] Add `role` (Student / Teacher / Admin) to signup & user model — `FR-AUTH-01`
 - [x] Password policy: min 8, upper + lower + digit — `FR-AUTH-03`
 - [x] **RBAC dependency** `require_role(...)` + `current_user.role`; 403 on forbidden — `FR-AUTH-07`
-- [ ] Admin: list users, deactivate/reactivate — `FR-AUTH-09` *(backend API done; admin UI pending)*
-- [ ] Profile update + change password — `FR-AUTH-10`; full logout — `FR-AUTH-08` *(backend API done; profile UI pending)*
+- [x] Admin: list users, deactivate/reactivate — `FR-AUTH-09` *(Admin page `/admin`)*
+- [x] Profile update + change password — `FR-AUTH-10`; full logout — `FR-AUTH-08` *(Profile page `/profile`)*
 - [x] Login lockout after 5 fails / 10 min — `NFR-SEC-07`; reject `$`-operator injection — `NFR-SEC-04` *(helper ready; apply it in your own schemas)*
 - [ ] **Assignment module (NEW):** create / submit / deadline / grade / feedback — `FR-ASG-01..08`
 - [ ] Notes: course/topic tag + keyword search — `FR-NOTE-02/03`

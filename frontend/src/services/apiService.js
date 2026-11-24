@@ -394,9 +394,14 @@ class ApiService {
   // Notes are private to their owner (FR-NOTE-04), so every call sends the user's token.
   // A demo session has no account on the server, so it has no notes.
   notesHeaders() {
+    return this.authHeaders('Sign in to save and view notes');
+  }
+
+  // Headers for endpoints that require a signed-in account
+  authHeaders(demoMessage = 'Please sign in to continue') {
     const token = localStorage.getItem('access_token');
     if (!token || token === 'demo-token') {
-      throw new Error('Sign in to save and view notes');
+      throw new Error(demoMessage);
     }
     return {
       'Content-Type': 'application/json',
@@ -509,6 +514,38 @@ class ApiService {
       console.error('API Error:', error);
       throw new Error(`Failed to delete note: ${error.message}`);
     }
+  }
+
+  // Admin API methods (FR-AUTH-09) — the backend allows these for admins only
+  async adminRequest(path, options = {}) {
+    const response = await fetch(`${this.baseURL}/api/users${path}`, {
+      ...options,
+      headers: this.authHeaders()
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      const detail = typeof data.detail === 'string' ? data.detail : `HTTP error! status: ${response.status}`;
+      throw new Error(detail);
+    }
+    return data;
+  }
+
+  async listUsers(limit = 500) {
+    return this.adminRequest(`?limit=${limit}`);
+  }
+
+  async setUserStatus(userId, isActive) {
+    return this.adminRequest(`/${userId}/status`, {
+      method: 'PATCH',
+      body: JSON.stringify({ is_active: isActive })
+    });
+  }
+
+  async setUserRole(userId, role) {
+    return this.adminRequest(`/${userId}/role`, {
+      method: 'PATCH',
+      body: JSON.stringify({ role })
+    });
   }
 
   // Document API methods

@@ -59,9 +59,9 @@
 ## 🟡 SHOULD — important, after the core
 
 ### Auth / Admin
-- [ ] Admin: view all users, deactivate/reactivate accounts `FR-AUTH-09` *(backend API done; admin UI pending)*
-- [ ] User: update profile name + change password (with current password) `FR-AUTH-10` *(backend API done; profile UI pending)*
-- [ ] Logout fully clears token + redirects `FR-AUTH-08`
+- [x] Admin: view all users, deactivate/reactivate accounts `FR-AUTH-09` *(Admin page `/admin`, admins only; also change roles)*
+- [x] User: update profile name + change password (with current password) `FR-AUTH-10` *(Profile page `/profile`)*
+- [x] Logout fully clears token + redirects `FR-AUTH-08` *(already worked: `signOut` clears token and user, protected routes redirect; checked in code, not click-tested)*
 
 ### Quiz
 - [ ] Randomize question/option order `FR-QZ-05`
