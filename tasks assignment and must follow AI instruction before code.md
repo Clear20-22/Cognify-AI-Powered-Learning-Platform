@@ -53,11 +53,92 @@ These are not suggestions.
 Some modules depend on others. Build in this order; downstream owners code against the
 **contract** (not the files) while upstream is in progress:
 
-1. **AKRAM** ships the **Role/RBAC contract first** (a `require_role(...)` dependency and
+1. ✅ **AKRAM** ships the **Role/RBAC contract first** (a `require_role(...)` dependency and
    `current_user.role`). Everyone else needs it to protect endpoints.
+   **Done** — branch `feature/akram-auth-rbac`. See *Integration Notes* below.
 2. **ARIK** ships the **Course contract** (`course_id` + `GET /courses/{id}`). Assignments
    and teacher-quizzes reference `course_id` only.
 3. Everyone else builds in parallel against those two contracts.
+
+---
+
+## 📢 Integration Notes — Auth & RBAC is available (READ BEFORE CODING)
+
+The Role/RBAC contract from AKRAM's branch `feature/akram-auth-rbac` is the base for
+every other module. Once it is merged to `main`, **pull `main` into your branch** before
+you continue, then follow these notes.
+
+### 1. After pulling
+- Re-run `pip install -r requirements.txt` — `email-validator` is new and the backend
+  will not import without it.
+- To run tests, also install the dev tools (not in `requirements.txt`):
+  `pip install pytest pytest-asyncio httpx`, then from `backend/`: `python -m pytest tests`.
+
+### 2. Your `backend/.env`
+- The MongoDB key is **`MONGODB_URI`** (not `MONGODB_URL`). The code ignores
+  `MONGODB_URL`, so with the wrong name the app silently runs in-memory and loses all
+  data on restart. ⚠️ `.env.example` and `docker-compose.yml` still use the wrong name —
+  use `MONGODB_URI` in your own `.env`.
+- To get an admin account: add `ADMIN_EMAILS=you@example.com` (comma-separated), then
+  sign up or sign in with that email. Nobody can self-register as admin.
+- Never paste the MongoDB connection string anywhere except your own `.env`.
+
+### 3. Protecting your endpoints (backend contract)
+Roles are `student`, `teacher`, `admin`. Use `require_role` on every new endpoint:
+
+```python
+from fastapi import Depends
+from app.api.deps import require_role, get_current_active_user
+from app.models.user import UserRole
+
+# Only teachers (and admins) can create
+@router.post("")
+async def create_course(user: dict = Depends(require_role(UserRole.TEACHER, UserRole.ADMIN))):
+    owner_id = user["id"]          # role is in user["role"]
+    ...
+
+# Any logged-in, active user
+@router.get("")
+async def list_courses(user: dict = Depends(get_current_active_user)):
+    ...
+```
+
+- No/invalid token → **401**. Wrong role → **403**. Deactivated user → **403**.
+- The role is read from the database on every request, so role changes and
+  deactivation apply immediately — do not trust a role sent by the client.
+- For free-form `dict` fields in your schemas, call `reject_mongo_operators()` from
+  `app.core.security` in a validator (blocks `$`-operator injection, NFR-SEC-04).
+
+### 4. Hiding UI by role (frontend contract)
+```jsx
+import { useAuth } from "../hooks/useAuth.jsx";
+
+const { user, role, hasRole } = useAuth();   // role: "student" | "teacher" | "admin"
+{hasRole("teacher", "admin") && <CreateCourseButton />}
+```
+`hasRole` only hides UI — the backend must still enforce access with `require_role`.
+`user.createdAt` holds the account creation date.
+
+### 5. Behaviour changes you may notice
+- **New sign-ups** need a password of 8+ chars with an uppercase letter, a lowercase
+  letter and a digit. Existing accounts keep signing in with their old password.
+- Existing users without a role are treated as **student**.
+- Sign-in: wrong email/password → 401 (same message for both); 5 failures in 10 min →
+  **429** for 10 minutes; deactivated account → 403.
+- `GET /api/users/{id}` now requires login (own profile or admin); `POST /api/users`
+  is admin-only. The frontend does not use either.
+- New endpoints: `GET/PATCH /api/auth/me`, `POST /api/auth/change-password`, and admin
+  `GET /api/users`, `PATCH /api/users/{id}/status`, `PATCH /api/users/{id}/role`.
+
+### 6. Shared files that changed — pull before editing them
+`backend/app/core/config.py` (new settings; unknown `.env` keys no longer crash startup) ·
+`backend/app/db/base.py` and `init_db.py` (new `update_user`, `list_users`) ·
+`backend/tests/conftest.py` (forces in-memory store).
+
+### 7. Tests must never touch a real database
+`tests/conftest.py` sets `MONGODB_URI=""` so tests always use the in-memory store, even
+if your `.env` points to Atlas. Do not remove this — tests create and delete users and
+would pollute the shared database.
 
 ---
 
@@ -68,12 +149,12 @@ Some modules depend on others. Build in this order; downstream owners code again
 access-control + account + assignment backbone, which everything else depends on.
 
 **Your tasks**
-- [ ] Add `role` (Student / Teacher / Admin) to signup & user model — `FR-AUTH-01`
-- [ ] Password policy: min 8, upper + lower + digit — `FR-AUTH-03`
-- [ ] **RBAC dependency** `require_role(...)` + `current_user.role`; 403 on forbidden — `FR-AUTH-07`
-- [ ] Admin: list users, deactivate/reactivate — `FR-AUTH-09`
-- [ ] Profile update + change password — `FR-AUTH-10`; full logout — `FR-AUTH-08`
-- [ ] Login lockout after 5 fails / 10 min — `NFR-SEC-07`; reject `$`-operator injection — `NFR-SEC-04`
+- [x] Add `role` (Student / Teacher / Admin) to signup & user model — `FR-AUTH-01`
+- [x] Password policy: min 8, upper + lower + digit — `FR-AUTH-03`
+- [x] **RBAC dependency** `require_role(...)` + `current_user.role`; 403 on forbidden — `FR-AUTH-07`
+- [ ] Admin: list users, deactivate/reactivate — `FR-AUTH-09` *(backend API done; admin UI pending)*
+- [ ] Profile update + change password — `FR-AUTH-10`; full logout — `FR-AUTH-08` *(backend API done; profile UI pending)*
+- [x] Login lockout after 5 fails / 10 min — `NFR-SEC-07`; reject `$`-operator injection — `NFR-SEC-04` *(helper ready; apply it in your own schemas)*
 - [ ] **Assignment module (NEW):** create / submit / deadline / grade / feedback — `FR-ASG-01..08`
 - [ ] Notes: course/topic tag + keyword search — `FR-NOTE-02/03`
 - [ ] **Teacher Dashboard (NEW, read-only aggregator):** consumes others' APIs — `FR-TDSH-01/03`
