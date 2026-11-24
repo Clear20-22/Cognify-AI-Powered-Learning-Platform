@@ -43,7 +43,16 @@ class Settings(BaseSettings):
     SECRET_KEY: str = "your-secret-key-change-this-in-production"
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 7  # 7 days
-    
+
+    # Access Control (RBAC)
+    # Comma-separated emails that are granted the admin role on sign-up/sign-in.
+    # Admins cannot self-register, so this is how the first admin is created.
+    ADMIN_EMAILS: str = ""
+
+    # Login lockout (NFR-SEC-07)
+    LOGIN_MAX_FAILED_ATTEMPTS: int = 5
+    LOGIN_LOCKOUT_MINUTES: int = 10
+
     # AI Service Settings
     GROQ_API_KEY: Optional[str] = None
     GEMINI_API_KEY: Optional[str] = None
@@ -57,6 +66,8 @@ class Settings(BaseSettings):
     class Config:
         env_file = ".env"
         case_sensitive = True
+        # Unknown keys in .env (e.g. from older templates) must not crash startup
+        extra = "ignore"
 
 
 @lru_cache()

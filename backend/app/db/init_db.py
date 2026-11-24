@@ -32,7 +32,21 @@ class InMemoryDataStore(IDataStore):
             if user.get("email") == email:
                 return user
         return None
-    
+
+    async def update_user(self, user_id: str, updates: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        if user_id in self.users:
+            self.users[user_id].update(updates)
+            self.users[user_id]["updated_at"] = datetime.now().isoformat()
+            return self.users[user_id]
+        return None
+
+    async def list_users(self, limit: int = 100) -> List[Dict[str, Any]]:
+        return sorted(
+            self.users.values(),
+            key=lambda x: x.get("created_at", ""),
+            reverse=True
+        )[:limit]
+
     # Chat methods
     async def add_chat(self, chat_id: str, chat_data: Dict[str, Any]) -> Dict[str, Any]:
         chat_data["id"] = chat_id

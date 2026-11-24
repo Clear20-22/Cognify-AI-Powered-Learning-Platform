@@ -3,6 +3,15 @@ import { useState, useEffect, createContext, useContext } from "react";
 const AuthContext = createContext({});
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
+// FastAPI returns `detail` as a string, or as a list of validation errors (422)
+const getErrorMessage = (data, fallback) => {
+  if (typeof data?.detail === "string") return data.detail;
+  if (Array.isArray(data?.detail) && data.detail.length > 0) {
+    return data.detail[0].msg?.replace(/^Value error, /, "") || fallback;
+  }
+  return fallback;
+};
+
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -26,15 +35,15 @@ export function AuthProvider({ children }) {
     getInitialSession();
   }, []);
 
-  // Sign up with email and password
-  const signUp = async (email, password, fullName) => {
+  // Sign up with email, password, and role ("student" or "teacher")
+  const signUp = async (email, password, fullName, role = "student") => {
     try {
       const response = await fetch(`${API_URL}/api/auth/signup`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ email, password, fullName }),
+        body: JSON.stringify({ email, password, fullName, role }),
       });
 
       const data = await response.json();
@@ -42,7 +51,7 @@ export function AuthProvider({ children }) {
       if (!response.ok) {
         return {
           user: null,
-          error: { message: data.detail || "Sign up failed" },
+          error: { message: getErrorMessage(data, "Sign up failed") },
         };
       }
 
@@ -51,6 +60,7 @@ export function AuthProvider({ children }) {
         id: data.user_id,
         email: data.email,
         name: data.full_name,
+        role: data.role,
       };
 
       // Don't store user and token - let them sign in manually
@@ -85,7 +95,7 @@ export function AuthProvider({ children }) {
       if (!response.ok) {
         return {
           user: null,
-          error: { message: data.detail || "Sign in failed" },
+          error: { message: getErrorMessage(data, "Sign in failed") },
         };
       }
 
@@ -94,6 +104,7 @@ export function AuthProvider({ children }) {
         id: data.user_id,
         email: data.email,
         name: data.full_name,
+        role: data.role,
       };
 
       // Store user and token
@@ -157,9 +168,16 @@ export function AuthProvider({ children }) {
     }
   };
 
+  // Role helpers for hiding features the user cannot access (FR-AUTH-07).
+  // The backend enforces access; this only controls what the UI shows.
+  const role = user?.role || "student";
+  const hasRole = (...roles) => roles.includes(role);
+
   const value = {
     user,
     loading,
+    role,
+    hasRole,
     signUp,
     signIn,
     signOut,
