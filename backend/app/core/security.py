@@ -3,14 +3,75 @@ Security Utilities
 Password hashing, JWT token generation, and authentication helpers
 """
 
+import logging
+import re
 from datetime import datetime, timedelta
 from typing import Optional, Dict, Any
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 from app.core.config import settings
 
+logger = logging.getLogger(__name__)
+
 # Password hashing context
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+# Password policy (FR-AUTH-03)
+PASSWORD_MIN_LENGTH = 8
+PASSWORD_POLICY_MESSAGE = (
+    "Password must be at least 8 characters and include an uppercase letter, "
+    "a lowercase letter, and a digit"
+)
+
+
+def validate_password_strength(password: str) -> str:
+    """
+    Enforce the password policy.
+
+    Args:
+        password: Plain text password
+
+    Returns:
+        The password unchanged if it is valid
+
+    Raises:
+        ValueError: If the password does not meet the policy
+    """
+    if (
+        len(password) < PASSWORD_MIN_LENGTH
+        or not re.search(r"[A-Z]", password)
+        or not re.search(r"[a-z]", password)
+        or not re.search(r"\d", password)
+    ):
+        raise ValueError(PASSWORD_POLICY_MESSAGE)
+    return password
+
+
+def reject_mongo_operators(value: Any) -> Any:
+    """
+    Reject user-supplied data containing MongoDB operator keys (NFR-SEC-04).
+
+    Recursively checks dictionaries and lists for keys starting with '$'
+    or containing '.', which could be used for operator injection.
+
+    Args:
+        value: Data to check
+
+    Returns:
+        The value unchanged if it is safe
+
+    Raises:
+        ValueError: If an operator-like key is found
+    """
+    if isinstance(value, dict):
+        for key, item in value.items():
+            if not isinstance(key, str) or key.startswith("$") or "." in key:
+                raise ValueError(f"Invalid field name: {key!r}")
+            reject_mongo_operators(item)
+    elif isinstance(value, list):
+        for item in value:
+            reject_mongo_operators(item)
+    return value
 
 
 def hash_password(password: str) -> str:
@@ -91,10 +152,6 @@ def decode_access_token(token: str) -> Optional[Dict[str, Any]]:
         )
         return payload
     except JWTError as e:
-        import logging
-        logger = logging.getLogger(__name__)
-        logger.error(f"JWT decode error: {e}")
-        logger.error(f"Token (first 50 chars): {token[:50]}")
-        logger.error(f"SECRET_KEY (first 10 chars): {settings.SECRET_KEY[:10]}")
-        logger.error(f"Algorithm: {settings.ALGORITHM}")
+        # Never log the token or secret key
+        logger.warning(f"JWT decode error: {e}")
         return None

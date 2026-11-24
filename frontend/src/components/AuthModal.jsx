@@ -23,6 +23,7 @@ function AuthModal({ onClose, onSuccess, initialMode = "signin" }) {
     email: "",
     password: "",
     confirmPassword: "",
+    role: "student",
   });
 
   const { signUp, signIn } = useAuth();
@@ -45,8 +46,16 @@ function AuthModal({ onClose, onSuccess, initialMode = "signin" }) {
         setError("Passwords do not match");
         return false;
       }
-      if (formData.password.length < 6) {
-        setError("Password must be at least 6 characters");
+      // Mirrors the backend password policy (FR-AUTH-03)
+      if (
+        formData.password.length < 8 ||
+        !/[A-Z]/.test(formData.password) ||
+        !/[a-z]/.test(formData.password) ||
+        !/\d/.test(formData.password)
+      ) {
+        setError(
+          "Password must be at least 8 characters and include an uppercase letter, a lowercase letter, and a digit"
+        );
         return false;
       }
     }
@@ -79,7 +88,8 @@ function AuthModal({ onClose, onSuccess, initialMode = "signin" }) {
         result = await signUp(
           formData.email,
           formData.password,
-          formData.fullName
+          formData.fullName,
+          formData.role
         );
 
         if (result.error) {
@@ -145,6 +155,7 @@ function AuthModal({ onClose, onSuccess, initialMode = "signin" }) {
       email: "",
       password: "",
       confirmPassword: "",
+      role: "student",
     });
   };
 
@@ -326,6 +337,36 @@ function AuthModal({ onClose, onSuccess, initialMode = "signin" }) {
                         placeholder="John Doe"
                         className="w-full pl-12 pr-4 py-3.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all outline-none"
                       />
+                    </div>
+                  </div>
+                )}
+
+                {mode === "signup" && (
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      I am a
+                    </label>
+                    <div className="grid grid-cols-2 gap-3">
+                      {[
+                        { value: "student", label: "Student" },
+                        { value: "teacher", label: "Teacher" },
+                      ].map((option) => (
+                        <button
+                          key={option.value}
+                          type="button"
+                          onClick={() =>
+                            setFormData({ ...formData, role: option.value })
+                          }
+                          aria-pressed={formData.role === option.value}
+                          className={`py-3 rounded-xl border font-semibold transition-all ${
+                            formData.role === option.value
+                              ? "border-red-600 bg-red-50 text-red-700"
+                              : "border-gray-300 text-gray-600 hover:border-gray-400"
+                          }`}
+                        >
+                          {option.label}
+                        </button>
+                      ))}
                     </div>
                   </div>
                 )}

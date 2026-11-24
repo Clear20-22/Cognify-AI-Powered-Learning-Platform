@@ -21,8 +21,21 @@ import {
   PlusIcon,
 } from "@heroicons/react/24/outline";
 
+const ROLE_LABELS = {
+  student: "Student",
+  teacher: "Teacher",
+  admin: "Admin",
+};
+
 function Dashboard({ onNavigate }) {
-  const { user, signOut } = useAuth();
+  const { user, role, signOut } = useAuth();
+  const roleLabel = ROLE_LABELS[role] || ROLE_LABELS.student;
+  const memberSince = user?.createdAt
+    ? new Date(user.createdAt).toLocaleDateString("en-US", {
+        month: "long",
+        year: "numeric",
+      })
+    : "—";
   const userId = useUserId();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
@@ -306,7 +319,7 @@ function Dashboard({ onNavigate }) {
                     <p className="text-sm font-semibold text-gray-800">
                       {user?.name || user?.email?.split("@")[0]}
                     </p>
-                    <p className="text-xs text-gray-500">Student</p>
+                    <p className="text-xs text-gray-500">{roleLabel}</p>
                   </div>
                 </button>
 
@@ -384,7 +397,7 @@ function Dashboard({ onNavigate }) {
                           </div>
                           <div className="flex-1">
                             <p className="text-xs text-gray-500">Role</p>
-                            <p className="font-medium text-gray-800">Student</p>
+                            <p className="font-medium text-gray-800">{roleLabel}</p>
                           </div>
                         </div>
 
@@ -397,7 +410,7 @@ function Dashboard({ onNavigate }) {
                               Member Since
                             </p>
                             <p className="font-medium text-gray-800">
-                              November 2025
+                              {memberSince}
                             </p>
                           </div>
                         </div>
@@ -588,7 +601,7 @@ function Dashboard({ onNavigate }) {
                     Account Type
                   </label>
                   <div className="px-4 py-3 bg-gray-50 rounded-xl text-gray-800">
-                    Student Account
+                    {roleLabel} Account
                   </div>
                 </div>
 
@@ -598,7 +611,7 @@ function Dashboard({ onNavigate }) {
                     Member Since
                   </label>
                   <div className="px-4 py-3 bg-gray-50 rounded-xl text-gray-800">
-                    November 2025
+                    {memberSince}
                   </div>
                 </div>
               </div>

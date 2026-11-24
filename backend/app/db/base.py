@@ -25,6 +25,12 @@ class IDataStore(ABC):
     @abstractmethod
     async def get_user_by_email(self, email: str) -> Optional[Dict[str, Any]]: ...
 
+    @abstractmethod
+    async def update_user(self, user_id: str, updates: Dict[str, Any]) -> Optional[Dict[str, Any]]: ...
+
+    @abstractmethod
+    async def list_users(self, limit: int = 100) -> List[Dict[str, Any]]: ...
+
     # Chat methods
     @abstractmethod
     async def add_chat(self, chat_id: str, chat_data: Dict[str, Any]) -> Dict[str, Any]: ...
@@ -125,7 +131,13 @@ class MongoDataStore(BaseRepository, IDataStore):
     
     async def get_user_by_email(self, email: str) -> Optional[Dict]:
         return await self.users.find_one({"email": email})
-    
+
+    async def update_user(self, user_id: str, updates: Dict) -> Optional[Dict]:
+        return await self.update("users", user_id, updates)
+
+    async def list_users(self, limit: int = 100) -> List[Dict]:
+        return await self.list("users", {}, limit)
+
     async def add_chat(self, chat_id: str, chat_data: Dict) -> Dict:
         return await self.create("chats", chat_id, chat_data)
     

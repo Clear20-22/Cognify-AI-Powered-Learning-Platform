@@ -13,9 +13,9 @@
 ## 🔴 MUST — core missing pillars (do these first)
 
 ### 1. User Roles + RBAC
-- [ ] Add `role` field (Student / Teacher / Admin) to signup `FR-AUTH-01`
-- [ ] Enforce password policy: min 8 chars, upper + lower + digit `FR-AUTH-03`
-- [ ] Role-based access control — restrict endpoints/pages per role, 403 on forbidden `FR-AUTH-07`
+- [x] Add `role` field (Student / Teacher / Admin) to signup `FR-AUTH-01`
+- [x] Enforce password policy: min 8 chars, upper + lower + digit `FR-AUTH-03`
+- [x] Role-based access control — restrict endpoints/pages per role, 403 on forbidden `FR-AUTH-07` *(backend `require_role()` + frontend `hasRole()`)*
 
 ### 2. Course Management (new module)
 - [ ] Teacher creates course (title, code, description) `FR-CRS-01`
@@ -58,8 +58,8 @@
 ## 🟡 SHOULD — important, after the core
 
 ### Auth / Admin
-- [ ] Admin: view all users, deactivate/reactivate accounts `FR-AUTH-09`
-- [ ] User: update profile name + change password (with current password) `FR-AUTH-10`
+- [ ] Admin: view all users, deactivate/reactivate accounts `FR-AUTH-09` *(backend API done; admin UI pending)*
+- [ ] User: update profile name + change password (with current password) `FR-AUTH-10` *(backend API done; profile UI pending)*
 - [ ] Logout fully clears token + redirects `FR-AUTH-08`
 
 ### Quiz
@@ -92,8 +92,8 @@
 - [ ] Teacher views/removes enrolled students `FR-CRS-06`
 
 ### Non-functional
-- [ ] Login lockout after 5 failed attempts / 10 min `NFR-SEC-07`
-- [ ] Reject NoSQL/Mongo operator injection (keys starting with `$`) `NFR-SEC-04`
+- [x] Login lockout after 5 failed attempts / 10 min `NFR-SEC-07`
+- [ ] Reject NoSQL/Mongo operator injection (keys starting with `$`) `NFR-SEC-04` *(helper `reject_mongo_operators()` done + applied to user schemas; other modules should apply it to their free-form dict fields)*
 - [ ] Escape user content (notes/chat) against XSS `NFR-SEC-09`
 - [ ] Send only needed text to AI (never passwords/tokens/email) `NFR-PRIV-02`
 - [ ] Automated tests ≥ 60% of auth/grading/analytics `NFR-MAIN-04`

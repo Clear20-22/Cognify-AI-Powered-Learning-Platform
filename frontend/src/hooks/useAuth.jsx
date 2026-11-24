@@ -3,18 +3,53 @@ import { useState, useEffect, createContext, useContext } from "react";
 const AuthContext = createContext({});
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
+// FastAPI returns `detail` as a string, or as a list of validation errors (422)
+const getErrorMessage = (data, fallback) => {
+  if (typeof data?.detail === "string") return data.detail;
+  if (Array.isArray(data?.detail) && data.detail.length > 0) {
+    return data.detail[0].msg?.replace(/^Value error, /, "") || fallback;
+  }
+  return fallback;
+};
+
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // Refresh role, name, and join date from the server, so sessions saved
+    // before these fields existed (or before an admin changed the role) stay current
+    const refreshProfile = async (token, storedUser) => {
+      try {
+        const response = await fetch(`${API_URL}/api/auth/me`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!response.ok) return;
+        const data = await response.json();
+        const refreshed = {
+          ...storedUser,
+          name: data.full_name,
+          role: data.role,
+          createdAt: data.created_at,
+        };
+        setUser(refreshed);
+        localStorage.setItem("user", JSON.stringify(refreshed));
+      } catch (error) {
+        console.error("Error refreshing profile:", error);
+      }
+    };
+
     // Get initial session from localStorage
     const getInitialSession = () => {
       try {
         const storedUser = localStorage.getItem("user");
         const token = localStorage.getItem("access_token");
         if (storedUser && token) {
-          setUser(JSON.parse(storedUser));
+          const parsedUser = JSON.parse(storedUser);
+          setUser(parsedUser);
+          if (token !== "demo-token") {
+            refreshProfile(token, parsedUser);
+          }
         }
       } catch (error) {
         console.error("Error getting session:", error);
@@ -26,15 +61,15 @@ export function AuthProvider({ children }) {
     getInitialSession();
   }, []);
 
-  // Sign up with email and password
-  const signUp = async (email, password, fullName) => {
+  // Sign up with email, password, and role ("student" or "teacher")
+  const signUp = async (email, password, fullName, role = "student") => {
     try {
       const response = await fetch(`${API_URL}/api/auth/signup`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ email, password, fullName }),
+        body: JSON.stringify({ email, password, fullName, role }),
       });
 
       const data = await response.json();
@@ -42,7 +77,7 @@ export function AuthProvider({ children }) {
       if (!response.ok) {
         return {
           user: null,
-          error: { message: data.detail || "Sign up failed" },
+          error: { message: getErrorMessage(data, "Sign up failed") },
         };
       }
 
@@ -51,6 +86,8 @@ export function AuthProvider({ children }) {
         id: data.user_id,
         email: data.email,
         name: data.full_name,
+        role: data.role,
+        createdAt: data.created_at,
       };
 
       // Don't store user and token - let them sign in manually
@@ -85,7 +122,7 @@ export function AuthProvider({ children }) {
       if (!response.ok) {
         return {
           user: null,
-          error: { message: data.detail || "Sign in failed" },
+          error: { message: getErrorMessage(data, "Sign in failed") },
         };
       }
 
@@ -94,6 +131,8 @@ export function AuthProvider({ children }) {
         id: data.user_id,
         email: data.email,
         name: data.full_name,
+        role: data.role,
+        createdAt: data.created_at,
       };
 
       // Store user and token
@@ -157,9 +196,16 @@ export function AuthProvider({ children }) {
     }
   };
 
+  // Role helpers for hiding features the user cannot access (FR-AUTH-07).
+  // The backend enforces access; this only controls what the UI shows.
+  const role = user?.role || "student";
+  const hasRole = (...roles) => roles.includes(role);
+
   const value = {
     user,
     loading,
+    role,
+    hasRole,
     signUp,
     signIn,
     signOut,

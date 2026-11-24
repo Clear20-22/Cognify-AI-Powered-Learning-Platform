@@ -2,7 +2,7 @@
 API Dependencies - Dependency injection for routes
 """
 
-from typing import Generator, Optional
+from typing import Callable, Generator, Optional
 from fastapi import Depends, HTTPException, status, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from jose import JWTError
@@ -10,7 +10,8 @@ from app.core.config import get_settings
 from app.core.security import decode_access_token
 from app.db.base import MongoDataStore
 from app.services.ai_service import AIService
-from app.services.user_service import UserService
+from app.services.user_service import UserService, get_user_role
+from app.models.user import UserRole
 from app.services.chat_service import ChatService
 from app.services.exam_service import ExamService
 from app.services.note_service import NoteService
@@ -139,5 +140,32 @@ async def get_current_active_user(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Inactive user"
         )
-    
+
+    current_user["role"] = get_user_role(current_user).value
     return current_user
+
+
+def require_role(*roles: UserRole) -> Callable:
+    """
+    Role-based access control dependency (FR-AUTH-07).
+
+    Usage:
+        @router.post("/courses")
+        async def create_course(user: dict = Depends(require_role(UserRole.TEACHER))):
+            ...
+
+    The role is read from the database on every request, so a role change or
+    deactivation takes effect immediately. Responds 401 without a valid token
+    and 403 when the user's role is not allowed.
+    """
+    allowed = {UserRole(role).value for role in roles}
+
+    async def checker(current_user: dict = Depends(get_current_active_user)) -> dict:
+        if current_user["role"] not in allowed:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You do not have permission to perform this action"
+            )
+        return current_user
+
+    return checker
