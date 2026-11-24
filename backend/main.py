@@ -247,6 +247,11 @@ async def internal_error_handler(request, exc):
 # Main Entry Point
 # ============================================================================
 
+# Masum: live quiz sockets (FR-RT-01..07), outside the /api prefix.
+from app.api.v1.live import ws_router as live_ws_router
+app.include_router(live_ws_router)
+
+
 if __name__ == "__main__":
     import uvicorn
     
