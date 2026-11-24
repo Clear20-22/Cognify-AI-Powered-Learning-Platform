@@ -24,11 +24,13 @@ class NoteService:
         title: Optional[str] = None,
         chat_id: Optional[str] = None,
         pdf_name: Optional[str] = None,
-        tags: Optional[List[str]] = None
+        tags: Optional[List[str]] = None,
+        topic: Optional[str] = None,
+        course_id: Optional[str] = None
     ) -> Dict[str, Any]:
         """
         Create a new note.
-        
+
         Args:
             user_id: User identifier
             content: Note content
@@ -36,13 +38,15 @@ class NoteService:
             chat_id: Optional associated chat ID
             pdf_name: Optional associated PDF name
             tags: Optional tags for organizing notes
-            
+            topic: Optional topic the note belongs to
+            course_id: Optional associated course ID
+
         Returns:
             Dictionary with created note data
         """
         try:
             note_id = f"note_{generate_uuid()}"
-            
+
             note_data = {
                 "user_id": user_id,
                 "content": content,
@@ -50,6 +54,8 @@ class NoteService:
                 "chat_id": chat_id,
                 "pdf_name": pdf_name,
                 "tags": tags or [],
+                "topic": topic,
+                "course_id": course_id,
                 "is_favorite": False,
                 "created_at": datetime.now().isoformat()
             }
@@ -132,38 +138,58 @@ class NoteService:
             logger.error(f"Delete note error: {e}")
             raise
     
-    async def search_notes(
+    async def list_notes(
         self,
         user_id: str,
-        query: str,
-        limit: int = 50
+        query: Optional[str] = None,
+        topic: Optional[str] = None,
+        course_id: Optional[str] = None,
+        tag: Optional[str] = None,
+        limit: int = 100
     ) -> List[Dict[str, Any]]:
         """
-        Search user's notes by content or tags.
-        
+        List a user's notes, optionally searched and filtered (FR-NOTE-02, FR-NOTE-03).
+
         Args:
             user_id: User identifier
-            query: Search query
+            query: Keyword matched against title, content, tags, and topic
+            topic: Only notes with this topic (case-insensitive)
+            course_id: Only notes linked to this course
+            tag: Only notes carrying this tag (case-insensitive)
             limit: Maximum number of results
-            
+
         Returns:
-            List of matching notes
+            Matching notes, newest first
         """
         try:
+            if not any([query, topic, course_id, tag]):
+                return await self.get_user_notes(user_id, limit)
+
+            # Simple in-memory filtering (in production, use MongoDB text search)
             all_notes = await self.get_user_notes(user_id, limit=1000)
-            
-            # Simple text search (in production, use MongoDB text search)
-            query_lower = query.lower()
-            matching_notes = [
-                note for note in all_notes
-                if (
-                    query_lower in note.get("content", "").lower()
-                    or query_lower in note.get("title", "").lower()
-                    or any(query_lower in tag.lower() for tag in note.get("tags", []))
-                )
-            ]
-            
-            return matching_notes[:limit]
+            query_lower = query.lower() if query else None
+            topic_lower = topic.lower() if topic else None
+            tag_lower = tag.lower() if tag else None
+
+            def matches(note: Dict[str, Any]) -> bool:
+                tags = [t.lower() for t in note.get("tags") or []]
+                if topic_lower and (note.get("topic") or "").lower() != topic_lower:
+                    return False
+                if course_id and note.get("course_id") != course_id:
+                    return False
+                if tag_lower and tag_lower not in tags:
+                    return False
+                if query_lower:
+                    searchable = [
+                        note.get("content") or "",
+                        note.get("title") or "",
+                        note.get("topic") or "",
+                        *tags,
+                    ]
+                    return any(query_lower in text.lower() for text in searchable)
+                return True
+
+            return [note for note in all_notes if matches(note)][:limit]
         except Exception as e:
-            logger.error(f"Search notes error: {e}")
+            logger.error(f"List notes error: {e}")
             raise

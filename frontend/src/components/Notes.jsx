@@ -20,7 +20,9 @@ function Notes({ onNavigate }) {
   const [selectedNote, setSelectedNote] = useState(null);
   const [editingNoteId, setEditingNoteId] = useState(null);
   const [editContent, setEditContent] = useState("");
+  const [editTopic, setEditTopic] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
+  const [topicFilter, setTopicFilter] = useState("");
   const [deleteConfirm, setDeleteConfirm] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
@@ -58,17 +60,21 @@ function Notes({ onNavigate }) {
   const startEdit = (note) => {
     setEditingNoteId(note.id);
     setEditContent(note.content);
+    setEditTopic(note.topic || "");
   };
 
   const cancelEdit = () => {
     setEditingNoteId(null);
     setEditContent("");
+    setEditTopic("");
   };
 
   const saveEdit = async (noteId) => {
     try {
+      // An empty topic clears it on the server
       const result = await apiService.updateNote(noteId, {
         content: editContent,
+        topic: editTopic,
       });
       // API returns the updated note directly
       if (result && result.id) {
@@ -76,6 +82,7 @@ function Notes({ onNavigate }) {
         setNotes(notes.map((n) => (n.id === noteId ? result : n)));
         setEditingNoteId(null);
         setEditContent("");
+        setEditTopic("");
         alert("✅ Note updated successfully!");
       }
     } catch (error) {
@@ -121,9 +128,33 @@ function Notes({ onNavigate }) {
     });
   };
 
-  const filteredNotes = notes.filter((note) =>
-    note.content.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const isDemo = apiService.isDemoSession();
+
+  // Distinct topics for the filter, sorted alphabetically
+  const topics = [
+    ...new Map(
+      notes
+        .filter((note) => note.topic)
+        .map((note) => [note.topic.toLowerCase(), note.topic])
+    ).values(),
+  ].sort((a, b) => a.localeCompare(b));
+
+  // Keyword search over title, content, topic, and tags (FR-NOTE-03),
+  // plus the topic filter (FR-NOTE-02)
+  const query = searchQuery.trim().toLowerCase();
+  const filteredNotes = notes.filter((note) => {
+    if (
+      topicFilter &&
+      (note.topic || "").toLowerCase() !== topicFilter.toLowerCase()
+    ) {
+      return false;
+    }
+    if (!query) return true;
+    return [note.title, note.content, note.topic, ...(note.tags || [])].some(
+      (text) => (text || "").toLowerCase().includes(query)
+    );
+  });
+  const isFiltering = Boolean(query || topicFilter);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-red-50/30">
@@ -166,12 +197,27 @@ function Notes({ onNavigate }) {
             </p>
           </div>
 
-          {/* Search Bar */}
-          <div className="mb-6">
-            <div className="relative">
+          {/* Search Bar and Topic Filter */}
+          <div className="mb-6 flex flex-col sm:flex-row gap-3">
+            {topics.length > 0 && (
+              <select
+                value={topicFilter}
+                onChange={(e) => setTopicFilter(e.target.value)}
+                aria-label="Filter by topic"
+                className="sm:order-2 sm:w-56 px-4 py-3 border border-gray-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
+              >
+                <option value="">All topics</option>
+                {topics.map((topic) => (
+                  <option key={topic} value={topic}>
+                    {topic}
+                  </option>
+                ))}
+              </select>
+            )}
+            <div className="relative flex-1">
               <input
                 type="text"
-                placeholder="Search notes..."
+                placeholder="Search by title, content, topic, or tag..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full px-4 py-3 pl-12 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
@@ -216,14 +262,20 @@ function Notes({ onNavigate }) {
                 />
               </svg>
               <h3 className="text-xl font-semibold text-gray-900 mb-2">
-                {searchQuery ? "No notes found" : "No saved notes yet"}
+                {isDemo
+                  ? "Notes need an account"
+                  : isFiltering
+                  ? "No notes found"
+                  : "No saved notes yet"}
               </h3>
               <p className="text-gray-600 mb-6">
-                {searchQuery
-                  ? "Try a different search term"
+                {isDemo
+                  ? "Notes are saved privately to your account. Sign up or sign in to save and view them."
+                  : isFiltering
+                  ? "Try a different search term or topic"
                   : "Start saving important AI responses by clicking the bookmark icon"}
               </p>
-              {!searchQuery && (
+              {!isFiltering && !isDemo && (
                 <button
                   onClick={() => onNavigate && onNavigate("chat")}
                   className="px-6 py-3 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-xl font-medium hover:from-red-700 hover:to-red-800 transition-all shadow-lg hover:shadow-xl"
@@ -242,6 +294,15 @@ function Notes({ onNavigate }) {
                   {editingNoteId === note.id ? (
                     // Edit Mode
                     <div className="p-6">
+                      <input
+                        type="text"
+                        value={editTopic}
+                        onChange={(e) => setEditTopic(e.target.value)}
+                        placeholder="Topic (e.g. Machine Learning)"
+                        maxLength={100}
+                        aria-label="Topic"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 text-sm mb-3"
+                      />
                       <textarea
                         value={editContent}
                         onChange={(e) => setEditContent(e.target.value)}
@@ -268,6 +329,28 @@ function Notes({ onNavigate }) {
                     // View Mode
                     <>
                       <div className="p-6">
+                        {(note.topic || note.tags?.length > 0) && (
+                          <div className="flex flex-wrap gap-1.5 mb-3">
+                            {note.topic && (
+                              <button
+                                type="button"
+                                onClick={() => setTopicFilter(note.topic)}
+                                title="Show notes with this topic"
+                                className="px-2 py-0.5 text-xs font-semibold rounded-full bg-red-100 text-red-700 hover:bg-red-200"
+                              >
+                                {note.topic}
+                              </button>
+                            )}
+                            {note.tags?.map((tag) => (
+                              <span
+                                key={tag}
+                                className="px-2 py-0.5 text-xs rounded-full bg-gray-100 text-gray-600"
+                              >
+                                #{tag}
+                              </span>
+                            ))}
+                          </div>
+                        )}
                         <p className="text-sm text-gray-800 leading-relaxed line-clamp-6 mb-4">
                           {note.content}
                         </p>
@@ -358,9 +441,16 @@ function Notes({ onNavigate }) {
               onClick={(e) => e.stopPropagation()}
             >
               <div className="p-6 border-b border-gray-200 flex items-center justify-between">
-                <h3 className="text-lg font-semibold text-gray-900">
-                  Saved Note
-                </h3>
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900">
+                    {selectedNote.title || "Saved Note"}
+                  </h3>
+                  {selectedNote.topic && (
+                    <p className="text-sm text-red-700 font-medium">
+                      {selectedNote.topic}
+                    </p>
+                  )}
+                </div>
                 <button
                   onClick={() => setSelectedNote(null)}
                   className="p-2 hover:bg-gray-100 rounded-lg transition-colors"

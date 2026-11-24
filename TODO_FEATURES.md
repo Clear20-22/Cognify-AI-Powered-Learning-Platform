@@ -81,8 +81,9 @@
 - [ ] Revision notes → save into Notes `FR-DOC-08`
 
 ### Notes
-- [ ] Associate note with course/topic + filter `FR-NOTE-02`
-- [ ] Keyword search of notes `FR-NOTE-03`
+- [x] Associate note with course/topic + filter `FR-NOTE-02` *(topic in UI; `course_id` in API, course picker once the course module exists)*
+- [x] Keyword search of notes `FR-NOTE-03`
+- [x] Notes visible only to their owner `FR-NOTE-04` *(was missing: notes endpoints had no authentication)*
 
 ### Student Dashboard
 - [ ] Show enrolled courses, pending assignments, upcoming quizzes `FR-SDSH-01`
