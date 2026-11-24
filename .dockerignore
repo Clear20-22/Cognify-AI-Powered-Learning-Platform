@@ -1,0 +1,21 @@
+# Files excluded from the Docker build context.
+
+# Secrets: never bake them into an image. Pass keys at run time instead:
+#     docker compose --env-file backend/.env up --build -d
+**/.env
+**/.env.*
+!**/.env.example
+
+# Dependencies and build output: installed and built inside the image.
+# (A host node_modules would also overwrite the Linux packages from `npm ci`.)
+**/node_modules
+**/dist
+**/__pycache__
+**/*.pyc
+**/.pytest_cache
+.venv
+venv
+
+# Repository metadata
+.git
+.github

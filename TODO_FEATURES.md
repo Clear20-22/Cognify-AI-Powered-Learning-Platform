@@ -50,8 +50,9 @@
 - [ ] Teacher: class avg/high/low/#submissions per quiz `FR-ANL-06`
 
 ### 7. README fixes
-- [ ] Update model names: `Llama-3.3-70b` → `openai/gpt-oss-120b`, `gemini-2.0-flash-exp` → `gemini-3.8-flash` (README lines 59, 196)
-- [ ] Add missing components to structure tree: Avatar, History, Layout, Sidebar, StudyPatterns
+- [x] Update model names: `Llama-3.3-70b` → `openai/gpt-oss-120b`, `gemini-2.0-flash-exp` → `gemini-3.8-flash` (README lines 59, 196) *(README now points to `AI_MODEL_*` in config.py)*
+- [x] Add missing components to structure tree: Avatar, History, Layout, Sidebar, StudyPatterns
+- [x] Fix setup docs: `.env.example` and `docker-compose.yml` used `MONGODB_URL` (code reads `MONGODB_URI`); template keys crashed startup; added `.dockerignore` so `.env` is never baked into images
 
 ---
 

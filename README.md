@@ -51,6 +51,7 @@ Cognify-AI-Powered-Learning-Platform/
 │   │   │   ├── config.py              # Environment settings & @lru_cache Singleton
 │   │   │   ├── security.py            # JWT token creation & Passlib hashing
 │   │   │   └── utils.py               # Shared utility functions (UUID generators)
+│   │   ├── database.py                # Async MongoDB Connection Singleton
 │   │   ├── 📁 db/                     # Data Storage Layer
 │   │   │   ├── base.py                # IDataStore interface & MongoDataStore repository
 │   │   │   └── init_db.py             # InMemoryDataStore fallback implementation
@@ -60,8 +61,8 @@ Cognify-AI-Powered-Learning-Platform/
 │   │   └── 📁 services/               # Core Business Logic Layer
 │   │       ├── 📁 ai_providers/       # AI Strategy Implementations
 │   │       │   ├── base_provider.py   # BaseAIProvider abstract strategy interface
-│   │       │   ├── gemini_provider.py # Google Gemini LLM provider strategy
-│   │       │   ├── groq_provider.py   # Groq Llama-3.3 LLM provider strategy
+│   │       │   ├── gemini_provider.py # Google Gemini provider (model: AI_MODEL_GEMINI in config.py)
+│   │       │   ├── groq_provider.py   # Groq provider (model: AI_MODEL_GROQ in config.py)
 │   │       │   ├── mock_provider.py   # Offline Demo provider strategy
 │   │       │   ├── provider_factory.py# AIProviderFactory & AIProviderChain (Failover)
 │   │       │   └── resilience.py      # Exponential backoff retry decorator
@@ -73,7 +74,7 @@ Cognify-AI-Powered-Learning-Platform/
 │   │       ├── note_service.py        # Notes creation and retrieval service
 │   │       ├── pdf_service.py         # PDF & PPTX Service entry point
 │   │       └── user_service.py        # User account service
-│   ├── database.py                    # Async MongoDB Connection Singleton
+│   ├── 📁 tests/                      # Pytest suite
 │   └── main.py                        # FastAPI Application Entrypoint & Lifespan
 │
 ├── 📁 frontend/                       # React 19 + Vite Frontend SPA
@@ -81,13 +82,18 @@ Cognify-AI-Powered-Learning-Platform/
 │   └── 📁 src/
 │       ├── 📁 components/             # React UI View Components
 │       │   ├── AuthModal.jsx          # Login & Signup Modal UI
+│       │   ├── Avatar.jsx             # User avatar with initials
 │       │   ├── ChatPage.jsx           # AI Tutoring Conversational View
 │       │   ├── Dashboard.jsx          # Learning Overview & Quick Actions
 │       │   ├── Documents.jsx          # File Upload & Summary View
+│       │   ├── History.jsx            # Past chats & exams in one view
 │       │   ├── LandingPage.jsx        # Landing & Intro Page
+│       │   ├── Layout.jsx             # Shared page layout wrapper
 │       │   ├── Notes.jsx              # Study Notes Workspace
 │       │   ├── Performance.jsx        # Analytics & Accuracy Charts
-│       │   └── PracticeTest.jsx       # Adaptive Exam Interface
+│       │   ├── PracticeTest.jsx       # Adaptive Exam Interface
+│       │   ├── Sidebar.jsx            # App navigation sidebar
+│       │   └── StudyPatterns.jsx      # Study streaks & daily activity
 │       ├── 📁 hooks/                  # Encapsulated Custom React Hooks
 │       │   ├── useAuth.jsx            # Auth Context Provider Hook
 │       │   ├── useChatSession.js      # Chat state & messaging side-effects hook
@@ -135,7 +141,7 @@ Cognify-AI-Powered-Learning-Platform/
 
 ```bash
 # Clone the repository
-git clone https://github.com/your-username/Cognify-AI-Powered-Learning-Platform.git
+git clone https://github.com/Clear20-22/Cognify-AI-Powered-Learning-Platform.git
 cd Cognify-AI-Powered-Learning-Platform
 
 # Create virtual environment
@@ -145,24 +151,31 @@ source .venv/bin/activate  # On Windows: .venv\Scripts\activate
 # Install backend dependencies
 pip install -r requirements.txt
 
-# Create environment configuration file
-cp backend/.env.example .env
+# Create your environment file from the template (it goes in backend/)
+cp .env.example backend/.env
 ```
 
-Edit your `.env` file with your API keys (Optional):
+Edit `backend/.env` with your own values (all optional for a first run):
 ```env
 GROQ_API_KEY=your_groq_api_key_here
 GEMINI_API_KEY=your_gemini_api_key_here
-MONGODB_URL=mongodb://localhost:27017
+MONGODB_URI=mongodb://localhost:27017
 DATABASE_NAME=cognify_db
-SECRET_KEY=your_super_secret_jwt_key
+SECRET_KEY=change-me-to-a-long-random-string
 ```
+
+> ⚠️ The database key is **`MONGODB_URI`** (not `MONGODB_URL`). With a wrong name the app
+> silently falls back to the in-memory store and loses all data on restart.
+> For MongoDB Atlas, paste the connection string from Atlas → *Connect → Drivers*
+> (`mongodb+srv://...`). `backend/.env` is gitignored — never commit keys or connection strings.
 
 Run the backend server:
 ```bash
 cd backend
 python main.py
 ```
+> The startup log shows `✅ MongoDB connected` when the database is in use, or
+> `⚠️ Running without database connection` when it falls back to in-memory.
 > Server runs at `http://localhost:8000`  
 > OpenAPI Interactive Docs at `http://localhost:8000/docs`
 
@@ -185,8 +198,11 @@ npm run dev
 Deploy the full stack (Backend + Frontend Nginx + MongoDB) in 1 command:
 
 ```bash
-docker compose up --build -d
+docker compose --env-file backend/.env up --build -d
 ```
+> `--env-file` passes your API keys and `SECRET_KEY` to the containers at run time.
+> `.env` files are excluded from the image by `.dockerignore`, so secrets are never baked
+> into it. In Docker the backend always uses the bundled `mongodb` container.
 > Frontend served via Nginx at `http://localhost`  
 > Backend REST API at `http://localhost:8000`
 
@@ -209,7 +225,7 @@ Cognify incorporates **12 software design patterns** for enterprise maintainabil
 11. **Custom Hooks Pattern** — `useChatSession`, `useExamSession`, `useDocumentManager` in React.
 12. **Singleton & Cached State** — `Database.connect_db()` and `@lru_cache()` for global singletons.
 
-> 📖 **Full Architectural Reference**: Explore the dedicated design patterns documentation at [`design_patterns/README.md`](file:///Users/jubayerahmedsojib/Documents/GitHub/Cognify-AI-Powered-Learning-Platform/design_patterns/README.md).
+> 📖 **Full Architectural Reference**: Explore the dedicated design patterns documentation at [`design_patterns/README.md`](design_patterns/README.md).
 
 ---
 
@@ -227,9 +243,11 @@ Cognify incorporates enterprise-grade security features out of the box:
 
 ## 🧪 Testing & Verification
 
-Run the automated Pytest test suite:
+Run the automated Pytest test suite (test tools are not in `requirements.txt`):
 ```bash
-./.venv/bin/pytest backend/tests
+pip install pytest pytest-asyncio httpx
+cd backend
+python -m pytest tests
 ```
 
 To verify backend import integrity:
