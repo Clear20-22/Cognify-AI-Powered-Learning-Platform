@@ -391,19 +391,35 @@ class ApiService {
   }
 
   // Notes API methods
-  async saveNote(userId, content, chatId = null, pdfName = null, tags = []) {
+  // Notes are private to their owner (FR-NOTE-04), so every call sends the user's token.
+  // A demo session has no account on the server, so it has no notes.
+  notesHeaders() {
+    const token = localStorage.getItem('access_token');
+    if (!token || token === 'demo-token') {
+      throw new Error('Sign in to save and view notes');
+    }
+    return {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`
+    };
+  }
+
+  isDemoSession() {
+    const token = localStorage.getItem('access_token');
+    return !token || token === 'demo-token';
+  }
+
+  async saveNote(userId, content, chatId = null, pdfName = null, tags = [], topic = null) {
     try {
       const response = await fetch(`${this.baseURL}/api/notes`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
+        headers: this.notesHeaders(),
         body: JSON.stringify({
-          user_id: userId,
           content: content,
           chat_id: chatId,
           pdf_name: pdfName,
-          tags: tags
+          tags: tags,
+          topic: topic
         })
       });
 
@@ -421,10 +437,8 @@ class ApiService {
   async getNote(noteId) {
     try {
       const response = await fetch(`${this.baseURL}/api/notes/${noteId}`, {
-        method: 'GET', 
-        headers: {
-          'Content-Type': 'application/json'
-        }
+        method: 'GET',
+        headers: this.notesHeaders()
       });
 
       if (!response.ok) {
@@ -439,12 +453,13 @@ class ApiService {
   }
 
   async getUserNotes(userId, limit = 100) {
+    if (this.isDemoSession()) {
+      return { user_id: userId, total: 0, notes: [] };
+    }
     try {
       const response = await fetch(`${this.baseURL}/api/notes/users/${userId}/notes?limit=${limit}`, {
         method: 'GET',
-        headers: {
-          'Content-Type': 'application/json'
-        }
+        headers: this.notesHeaders()
       });
 
       if (!response.ok) {
@@ -462,9 +477,7 @@ class ApiService {
     try {
       const response = await fetch(`${this.baseURL}/api/notes/${noteId}`, {
         method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json'
-        },
+        headers: this.notesHeaders(),
         body: JSON.stringify(updates)
       });
 
@@ -483,9 +496,7 @@ class ApiService {
     try {
       const response = await fetch(`${this.baseURL}/api/notes/${noteId}`, {
         method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json'
-        }
+        headers: this.notesHeaders()
       });
 
       if (!response.ok) {
