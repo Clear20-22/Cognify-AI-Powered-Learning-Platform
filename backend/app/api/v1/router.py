@@ -14,3 +14,7 @@ router.include_router(chat.router, tags=["Chat"])
 router.include_router(exams.router, tags=["Exams"])
 router.include_router(notes.router, tags=["Notes"])
 router.include_router(documents.router, tags=["Documents"])
+
+# Assignments (AKRAM)
+from app.api.v1 import assignments  # noqa: E402
+router.include_router(assignments.router, tags=["Assignments"])

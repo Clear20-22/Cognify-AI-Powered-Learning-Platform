@@ -76,6 +76,48 @@ class IDataStore(ABC):
     @abstractmethod
     async def delete_note(self, note_id: str) -> bool: ...
 
+    # Assignment methods
+    @abstractmethod
+    async def add_assignment(self, assignment_id: str, data: Dict[str, Any]) -> Dict[str, Any]: ...
+
+    @abstractmethod
+    async def get_assignment(self, assignment_id: str) -> Optional[Dict[str, Any]]: ...
+
+    @abstractmethod
+    async def list_assignments(self, filters: Dict[str, Any], limit: int = 500) -> List[Dict[str, Any]]: ...
+
+    @abstractmethod
+    async def update_assignment(self, assignment_id: str, updates: Dict[str, Any]) -> Optional[Dict[str, Any]]: ...
+
+    @abstractmethod
+    async def delete_assignment(self, assignment_id: str) -> bool: ...
+
+    # Submission methods (one submission per student per assignment)
+    @abstractmethod
+    async def save_submission(self, submission_id: str, data: Dict[str, Any]) -> Dict[str, Any]: ...
+
+    @abstractmethod
+    async def get_submission(self, submission_id: str) -> Optional[Dict[str, Any]]: ...
+
+    @abstractmethod
+    async def list_submissions(self, filters: Dict[str, Any], limit: int = 1000) -> List[Dict[str, Any]]: ...
+
+    @abstractmethod
+    async def update_submission(self, submission_id: str, updates: Dict[str, Any]) -> Optional[Dict[str, Any]]: ...
+
+    @abstractmethod
+    async def delete_submissions(self, filters: Dict[str, Any]) -> int: ...
+
+    # Binary file storage (assignment attachments and submission files)
+    @abstractmethod
+    async def store_file(self, file_id: str, filename: str, content_type: str, data: bytes) -> None: ...
+
+    @abstractmethod
+    async def get_file(self, file_id: str) -> Optional[Dict[str, Any]]: ...
+
+    @abstractmethod
+    async def delete_file(self, file_id: str) -> bool: ...
+
 
 class BaseRepository:
     """Base repository for data access operations"""
@@ -179,3 +221,61 @@ class MongoDataStore(BaseRepository, IDataStore):
     
     async def delete_note(self, note_id: str) -> bool:
         return await self.delete("notes", note_id)
+
+    async def add_assignment(self, assignment_id: str, data: Dict) -> Dict:
+        return await self.create("assignments", assignment_id, data)
+
+    async def get_assignment(self, assignment_id: str) -> Optional[Dict]:
+        return await self.get_by_id("assignments", assignment_id)
+
+    async def list_assignments(self, filters: Dict, limit: int = 500) -> List[Dict]:
+        return await self.list("assignments", filters, limit)
+
+    async def update_assignment(self, assignment_id: str, updates: Dict) -> Optional[Dict]:
+        return await self.update("assignments", assignment_id, updates)
+
+    async def delete_assignment(self, assignment_id: str) -> bool:
+        return await self.delete("assignments", assignment_id)
+
+    async def save_submission(self, submission_id: str, data: Dict) -> Dict:
+        data["_id"] = submission_id
+        data["id"] = submission_id
+        await self.db["submissions"].replace_one({"_id": submission_id}, data, upsert=True)
+        return data
+
+    async def get_submission(self, submission_id: str) -> Optional[Dict]:
+        return await self.get_by_id("submissions", submission_id)
+
+    async def list_submissions(self, filters: Dict, limit: int = 1000) -> List[Dict]:
+        cursor = self.db["submissions"].find(filters).sort("submitted_at", -1).limit(limit)
+        return await cursor.to_list(length=limit)
+
+    async def update_submission(self, submission_id: str, updates: Dict) -> Optional[Dict]:
+        return await self.update("submissions", submission_id, updates)
+
+    async def delete_submissions(self, filters: Dict) -> int:
+        result = await self.db["submissions"].delete_many(filters)
+        return result.deleted_count
+
+    async def store_file(self, file_id: str, filename: str, content_type: str, data: bytes) -> None:
+        await self.fs.upload_from_stream_with_id(
+            file_id, filename, data, metadata={"content_type": content_type}
+        )
+
+    async def get_file(self, file_id: str) -> Optional[Dict]:
+        try:
+            grid_out = await self.fs.open_download_stream(file_id)
+        except Exception:
+            return None
+        return {
+            "filename": grid_out.filename,
+            "content_type": (grid_out.metadata or {}).get("content_type", "application/octet-stream"),
+            "data": await grid_out.read(),
+        }
+
+    async def delete_file(self, file_id: str) -> bool:
+        try:
+            await self.fs.delete(file_id)
+            return True
+        except Exception:
+            return False
