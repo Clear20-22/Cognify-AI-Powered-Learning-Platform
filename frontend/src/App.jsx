@@ -14,6 +14,8 @@ import ProfileSettings from "./components/ProfileSettings";
 import AdminUsers from "./components/AdminUsers";
 import { AuthProvider, useAuth } from "./hooks/useAuth.jsx";
 import "./index.css";
+import LiveQuiz, { LiveQuizNavigation } from "./components/LiveQuiz.jsx";
+import LiveQuizHost from "./components/LiveQuizHost.jsx";
 
 function AppContent() {
   const { user, loading, signInAnonymously } = useAuth();
@@ -62,6 +64,8 @@ function AppContent() {
 
   return (
     <div className="App">
+      {/* Masum: live navigation and private notifications (FR-RT-01..07). */}
+      {user && <LiveQuizNavigation />}
       <Routes>
         <Route
           path="/"
@@ -185,6 +189,9 @@ function AppContent() {
             )
           }
         />
+        {/* Masum: each live page enforces its account role. */}
+        <Route path="/live" element={user ? <LiveQuiz /> : <Navigate to="/" replace />} />
+        <Route path="/live/host" element={user ? <LiveQuizHost /> : <Navigate to="/" replace />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </div>

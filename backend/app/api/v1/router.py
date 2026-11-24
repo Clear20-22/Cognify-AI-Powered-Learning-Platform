@@ -14,3 +14,7 @@ router.include_router(chat.router, tags=["Chat"])
 router.include_router(exams.router, tags=["Exams"])
 router.include_router(notes.router, tags=["Notes"])
 router.include_router(documents.router, tags=["Documents"])
+
+# Masum: live quiz HTTP routes (FR-RT-01..07).
+from app.api.v1.live import router as live_router
+router.include_router(live_router)

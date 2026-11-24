@@ -105,13 +105,18 @@
 ## 🟢 COULD — nice to have / advanced
 
 ### Real-Time Live Quiz (WebSockets)
-- [ ] Teacher creates live session + 6-char room code `FR-RT-01`
-- [ ] Students join by room code `FR-RT-02`
-- [ ] Teacher advances questions, pushed < 1s to all `FR-RT-03`
-- [ ] One answer per student per question `FR-RT-04`
-- [ ] Live leaderboard updates < 1s `FR-RT-05`
-- [ ] Reconnect with same room code, keep score `FR-RT-06`
+- [x] Teacher creates live session + 6-char room code `FR-RT-01`
+- [x] Students join by room code `FR-RT-02`
+- [x] Teacher advances questions, pushed < 1s to all `FR-RT-03` (verified locally)
+- [x] One answer per student per question `FR-RT-04`
+- [x] Live leaderboard updates < 1s `FR-RT-05` (verified locally)
+- [x] Reconnect with same room code, keep score `FR-RT-06`
 - [ ] Real-time notifications (new quiz/assignment/marks) `FR-RT-07`
+
+  Masum's authenticated private stream, replay and global notification panel are
+  implemented. Quiz/assignment owners must publish authorized events through
+  `get_live_service(request).notifications.publish(...)` when those modules ship;
+  see `backend/app/realtime/README.md`. Subsecond delivery depends on the deployed network.
 
 ### Other
 - [ ] Export course results as CSV `FR-ANL-08`
